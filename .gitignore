@@ -1,3 +1,6 @@
+# Vim
+*.swp
+
 # Compiled Lua sources
 luac.out
 
