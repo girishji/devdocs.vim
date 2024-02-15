@@ -7,50 +7,54 @@ local unpack = unpack or table.unpack
 local format = string.format
 local layout = pandoc.layout
 local literal, empty, cr, concat, blankline, chomp, space, cblock, rblock,
-  prefixed, nest, hang, nowrap =
-  layout.literal, layout.empty, layout.cr, layout.concat, layout.blankline,
-  layout.chomp, layout.space, layout.cblock, layout.rblock,
-  layout.prefixed, layout.nest, layout.hang, layout.nowrap
-local to_roman = pandoc.utils.to_roman_numeral
+    lblock, prefixed, nest, hang, nowrap, height =
+    layout.literal, layout.empty, layout.cr, layout.concat, layout.blankline,
+    layout.chomp, layout.space, layout.cblock, layout.rblock, layout.lblock,
+    layout.prefixed, layout.nest, layout.hang, layout.nowrap, layout.height
 local footnotes = {}
 local links = {}
-local to_indent = false
-local CODE_INDENT = 4
 local TEXT_INDENT = 3
--- local sepchars = { '=', '-' }
-local sepchars = { '═', '—' }  -- only for unicode font sets, not for 'fixedsys' font.
+local TEXT_WIDTH = 80
+local emptylines_around_codeblock = false
+local use_terminal_width = true
+-- only for unicode font sets, not for 'fixedsys' font.
+-- local extended_ascii = true
+local extended_ascii = false
+local sepchars = extended_ascii and { '═', '—' } or { '=', '-' }
+local doublequote = extended_ascii and { '"', '"'} or {'"', '"'}
+local singlequote = extended_ascii and { "'", "'"} or {"'", "'"}
 
-local function indent(s)
-    if to_indent then
-        return nest(s, 2 * TEXT_INDENT)
-    else
-        return s
+local function string_split(str, pat)
+    -- fn('1.2.44' '[^.]+') -> '1', '2', '44'
+    -- fn('1.2.44' '.') -> '1', '.', '2', '.', '44'
+    local split = {}
+    for s in str:gmatch(pat) do
+        table.insert(split, s)
     end
+    return split
 end
 
--- Escape special characters
--- local function escape(s)
---     return (s:gsub("[][\\`{}_*<>~^'\"]", function(s) return "\\" .. s end))
--- end
-
--- local format_number = {}
--- format_number.Decimal = function(n)
---     return format("%d", n)
--- end
--- format_number.Example = format_number.Decimal
--- format_number.DefaultStyle = format_number.Decimal
--- format_number.LowerAlpha = function(n)
---     return string.char(96 + (n % 26))
--- end
--- format_number.UpperAlpha = function(n)
---     return string.char(64 + (n % 26))
--- end
--- format_number.UpperRoman = function(n)
---     return to_roman(n)
--- end
--- format_number.LowerRoman = function(n)
---     return string.lower(to_roman(n))
--- end
+local function set_columns(opts)
+    if opts.columns == pandoc.WriterOptions({}).columns then
+        -- column option not set through command line
+        opts.columns = TEXT_WIDTH
+        if use_terminal_width then
+            local out = pandoc.pipe('tput', {'cols'}, '')
+            local num = tonumber(out, 10)
+            if num then
+                opts.columns = math.min(140, math.max(num - 3, TEXT_WIDTH))
+            else
+                out = string_split(pandoc.pipe('stty', {'size'}, ''), '[^ ]+')
+                if #out == 2 then
+                    num = tonumber(out[2], 10)
+                    if num then
+                        opts.columns = math.min(140, math.max(num - 3, TEXT_WIDTH))
+                    end
+                end
+            end
+        end
+    end
+end
 
 local function is_tight_list(el)
     if not (el.tag == "BulletList" or el.tag == "OrderedList" or
@@ -75,7 +79,7 @@ local function has_attributes(el)
     (#el.attr.identifier > 0 or #el.attr.classes > 0 or #el.attr.attributes > 0)
 end
 
--- local function render_attributes(el, isblock)
+-- local function render_attributes(el, isblock, opts)
 --     if not has_attributes(el) then
 --         return empty
 --     end
@@ -98,9 +102,8 @@ end
 --     end
 --     buff[#buff + 1] = "}"
 --     if isblock then
---         -- XXX
---         -- return rblock(nowrap(concat(buff)), PANDOC_WRITER_OPTIONS.columns)
---         return concat(buff)
+--         return rblock(nowrap(concat(buff)), opts.columns)
+--         -- return concat(buff)
 --     else
 --         return concat(buff)
 --     end
@@ -129,37 +132,75 @@ end
 --   return concat(buff)
 -- end
 
--- local function blocks(bs, sep)
---   local dbuff = {}
---   for i=1,#bs do
---     local el = bs[i]
---     dbuff[#dbuff + 1] = Blocks[el.tag](el)
---   end
---   return concat(dbuff, sep)
+-- local function blocks(bs, opts, sep)
+--     local dbuff = {}
+--     if #bs > 0 then
+--         local el = bs[1]
+--         dbuff[1] = Writer.Block[el.tag](el, opts)
+--         for i = 2, #bs do
+--             local el = bs[i]
+--             if el.tag ~= 'CodeBlock' and bs[i - 1].tag ~= 'CodeBlock' then
+--                 dbuff[#dbuff + 1] = sep
+--             end
+--             dbuff[#dbuff + 1] = Writer.Block[el.tag](el, opts)
+--         end
+--     end
+--     return concat(dbuff)
 -- end
 
+local function blocks(bs, opts, sep)
+    if emptylines_around_codeblock then
+        return Writer.Blocks(bs)
+    end
+    -- remove empty lines above and below CodeBlock
+    --   Writer.Blocks() automatically inserts blankline between blocks
+    local docs = {}
+    local blocks = {}
+    for i, block in ipairs(bs) do
+        if block.tag == 'CodeBlock' or (block.tag == 'BlockQuote' and
+            #block.content > 0 and block.content[1].tag == 'CodeBlock') then
+            if blocks then
+                table.insert(docs, Writer.Blocks(blocks))
+                blocks = {}
+            end
+            if block.tag == 'CodeBlock' then
+                table.insert(docs, concat{cr, Writer.Block.CodeBlock(block, opts), cr})
+            else
+                table.insert(docs, concat{cr, Writer.Block.BlockQuote(block, opts), cr})
+            end
+        else
+            table.insert(blocks, block)
+        end
+    end
+    if blocks then
+        table.insert(docs, Writer.Blocks(blocks))
+    end
+    return concat(docs)
+end
 
-Writer.Pandoc = function(doc)
-    local d = Writer.Blocks(doc.blocks)
-    --     lang = " " .. el.classes[1]
+Writer.Pandoc = function(doc, opts)
+    set_columns(opts)
+    local sectioned = pandoc.utils.make_sections(true, nil, doc.blocks)
+    local d = blocks(sectioned, opts, blankline)
     local notes = {}
-    for i,f in ipairs(footnotes) do
-        local note = string.format("[%d] ",i)  .. " " .. Writer.Blocks(f)
+    for i=1,#footnotes do
+        local note = hang(Writer.Blocks(footnotes[i]), TEXT_INDENT, concat{format("[^%d]:",i),space})
         table.insert(notes, note)
     end
-    return {d, '\n\n' ,pandoc.layout.concat(notes, '\n')}
+    local hotlinks = { '>>>>>>>>>><<<<<<<<<<' }
+    for key, val in pairs(links) do
+        table.insert(hotlinks, concat{key, '\t', val})
+    end
+    local formatted = concat{d, blankline, concat(notes, blankline), blankline, concat(hotlinks, cr)}
+    return layout.render(formatted, opts.columns)
 end
 
 Writer.Block.Header = function(el, opts)
     local result = {}
     if el.level < 5 then
         result = {}
-        if el.level == 2 then
-            result = { string.rep(sepchars[1], opts.columns), cr }
-        elseif el.level == 3 then
-            result = { string.rep(sepchars[2], opts.columns), cr }
-        end
         for _, str in ipairs({ Writer.Inlines(el.content), space, '~' }) do
+        -- for _, str in ipairs({ Writer.Inlines(el.content), space, string.rep('~', el.level) }) do
             table.insert(result, str)
         end
     else
@@ -168,31 +209,41 @@ Writer.Block.Header = function(el, opts)
     return concat(result)
 end
 
-Writer.Block.Div = function(el)
-    -- if el.classes:includes("section") then
-    --     -- sections are implicit in djot
-    --     if el.identifier and el.content[1].t == "Header" and
-    --         el.content[1].identifier == "" then
-    --         el.content[1].identifier = el.identifier
-    --     end
-    --     return Writer.Blocks(el.content)
-    --     -- return Writer.Blocks(el.content, blankline)
-    -- else
-    --     local attr = render_attributes(el, true)
-    --     -- return concat{attr, cr, ":::", cr, blocks(el.content, blankline), cr, ":::"}
-    --     return concat{attr, cr, ":::", cr, Writer.Blocks(el.content), cr, ":::"}
-    -- end
-    return nest(Writer.Blocks(el.content), 3)
+Writer.Block.Div = function(el, opts)
+    local doc = blocks(el.content, opts, blankline)
+    if el.classes:includes("section") then
+        if el.attr and el.attr.attributes and el.attr.attributes.number then
+            local section = el.attr.attributes.number
+            local fragments = string_split(section, '[^.]+')
+            local indent = math.max(0, math.min(2, #fragments - 1)) * TEXT_INDENT
+            local sec = extended_ascii and ('§' .. section) or ('[' .. section .. ']')
+            if #fragments < 4 then
+                local schar = #fragments == 3 and sepchars[2] or sepchars[1]
+                local slen = opts.columns - indent - 1 - string.len(sec)
+                sec = nowrap(concat{string.rep(schar, slen), space, sec})
+            else
+                sec = nowrap(sec)
+            end
+            local fragments = string_split(section, '[^.]+')
+            if #fragments > 1 then
+                return nest(concat{sec, cr, doc}, indent)
+            else
+                return concat{sec, cr, doc}
+            end
+        else
+            if el.attr.identifier ~= nil and el.attr.identifier ~= '' then
+                return concat{lblock(nowrap(concat{"::: ", el.attr.identifier}), opts.columns), cr, doc, cr }
+            end
+        end
+    end
+    return doc
 end
 
 Writer.Block.RawBlock = function(el)
     if el.format == "devdoc" then
         return concat({el.text})
     elseif el.format == "rst_table" then
-        local lines = {}
-        for s in (el.text):gmatch("[^\r\n]+") do
-            table.insert(lines, s)
-        end
+        local lines = string_split(el.text, "[^\r\n]+")
         local formatted = {}
         for i, s in ipairs(lines) do
             local str = empty
@@ -237,14 +288,14 @@ Writer.Block.Table = function(el, opts)
     local function filter()
         local filter = {}
         filter.Link = function(el, opts)
-            local src = pandoc.write(pandoc.Pandoc({el}), "plain", opts)
-            if #src > 0 then
-                src = src:sub(1, #src - 1)  -- remove trailing space
-            end
-            return src
+            return pandoc.utils.stringify(el.content)
         end
         filter.Code = function(el, opts)
             return el.text
+        end
+        filter.Table = function(el, opts)
+            -- remove caption, as it will create markup artifacts from 'rst'.
+            return pandoc.Table({long = '', short = ''}, el.colspecs, el.head, el.bodies, el.foot, el.attr)
         end
         for _, inline in ipairs({'Image', 'Math', 'Note' }) do
             filter[inline] = function(el, opts)
@@ -269,7 +320,11 @@ Writer.Block.Table = function(el, opts)
         return filter
     end
     local table = pandoc.write(pandoc.Pandoc({el}):walk(filter()), "rst", opts)
-    return Writer.Block.RawBlock(pandoc.RawBlock('rst_table', table))
+    if extended_ascii then
+        return Writer.Block.RawBlock(pandoc.RawBlock('rst_table', table))
+    else
+        return table
+    end
 end
 
 Writer.Block.DefinitionList = function(el)
@@ -334,23 +389,7 @@ Writer.Block.OrderedList = function(el)
 end
 
 Writer.Block.CodeBlock = function(el)
-    -- local ticks = 3
-    -- el.text:gsub("(`+)", function(s) if #s >= ticks then ticks = #s + 1 end end)
-    -- local fence = string.rep("`", ticks)
-    -- local lang = empty
-    -- if #el.classes > 0 then
-    --     lang = " " .. el.classes[1]
-    --     table.remove(el.classes, 1)
-    -- end
-    -- local attr = render_attributes(el, true)
-    -- local result = { attr, cr, fence, lang, cr, el.text, cr, fence, cr }
-    -- return concat(result)
-    -- local nestval = to_indent and (2 * CODE_INDENT) or CODE_INDENT
-    -- local result = { prefixed(nest(el.text:gsub('%s$', ''), nestval), '>') }
-    -- local result = { nest(el.text:gsub('%s$', ''), nestval) }
-    -- local result = { '>', lang, cr, el.text:gsub('%s*$', ''), cr, '<' }
-    local result = { '>', cr, el.text:gsub('%s*$', ''), cr, '<' }
-    return concat(result)
+    return concat{ '>', cr, nest(el.text:gsub('%s*$', ''), 2), cr, '<' }
 end
 
 do
@@ -367,6 +406,14 @@ end
 
 Writer.Block.HorizontalRule = function(el, opts)
     return cblock("* * * * *", opts.columns)
+end
+
+do
+    for _, inline in ipairs({'SmallCaps', 'Span', 'Cite'}) do
+        Writer.Inline[inline] = function(el, opts)
+            return Writer.Inlines(el.content, opts)
+        end
+    end
 end
 
 Writer.Inline.Str = function(el)
@@ -386,7 +433,7 @@ Writer.Inline.SoftBreak = function(el, opts)
 end
 
 Writer.Inline.LineBreak = function(el)
-    return concat({ "\\", cr })
+    return cr
 end
 
 Writer.Inline.RawInline = function(el)
@@ -428,16 +475,8 @@ Writer.Inline.Superscript = function(el)
     return concat{ "{^", Writer.Inlines(el.content), "^}" }
 end
 
-Writer.Inline.SmallCaps = function(el)
-    return Writer.Inlines(el.content)
-end
-
 Writer.Inline.Underline = function(el)
     return concat{ "…", Writer.Inlines(el.content), "…" }
-end
-
-Writer.Inline.Cite = function(el)
-    return Writer.Inlines(el.content)
 end
 
 Writer.Inline.Math = function(el)
@@ -450,30 +489,23 @@ Writer.Inline.Math = function(el)
     return concat{ marker, Inlines.Code(el) }
 end
 
-Writer.Inline.Span = function(el)
-    return concat{Writer.Inlines(el.content)}
-end
-
 Writer.Inline.Link = function(el)
-    -- if el.title and #el.title > 0 then
-    --     el.attributes.title = el.title
-    --     el.title = nil
+    local src = Writer.Inlines(el.content)
+    -- local rendered = pandoc.write(pandoc.Pandoc({el.content}), "plain")
+    -- if #rendered > 0 then
+    --     rendered = rendered:sub(1, #rendered - 1)
     -- end
-    -- local attr = render_attributes(el)
-    -- local result = {"[", Writer.Inlines(el.content), "](", el.target, ")", attr}
-    local lsrc = Writer.Inlines(el.content)
-    local rendered = pandoc.write(pandoc.Pandoc({el.content}), "plain")
-    if #rendered > 0 then
-        rendered = rendered:sub(1, #rendered - 1)
-    end
+    local rendered = pandoc.utils.stringify(el.content)
     local idx = string.find(rendered, ' ')
     if idx == nil then
-        links[rendered] = el.target
-        -- local result = {"¦", lsrc, "¦"}
-        local result = {"¦", rendered, "¦"}
-        return concat(result)
+        idx = string.find(rendered, 'http')
+        if idx == nil then
+            links[rendered] = el.target
+            local result = {"¦", rendered, "¦"}
+            return concat(result)
+        end
     end
-    return lsrc
+    return src
 end
 
 Writer.Inline.Image = function(el)
@@ -489,9 +521,9 @@ end
 
 Writer.Inline.Quoted = function(el)
     if el.quotetype == "DoubleQuote" then
-        return concat{'"', Writer.Inlines(el.content), '"'}
+        return concat{doublequote[1], Writer.Inlines(el.content), doublequote[2]}
     else
-        return concat{"'", Writer.Inlines(el.content), "'"}
+        return concat{singlequote[1], Writer.Inlines(el.content), singlequote[2]}
     end
 end
 
