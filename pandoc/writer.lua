@@ -18,8 +18,8 @@ local TEXT_WIDTH = 80
 local emptylines_around_codeblock = false
 local use_terminal_width = true
 -- only for unicode font sets, not for 'fixedsys' font.
--- local extended_ascii = true
-local extended_ascii = false
+local extended_ascii = true
+-- local extended_ascii = false
 local sepchars = extended_ascii and { '═', '—' } or { '=', '-' }
 local doublequote = extended_ascii and { '"', '"'} or {'"', '"'}
 local singlequote = extended_ascii and { "'", "'"} or {"'", "'"}
@@ -38,19 +38,20 @@ local function set_columns(opts)
     if opts.columns == pandoc.WriterOptions({}).columns then
         -- column option not set through command line
         opts.columns = TEXT_WIDTH
-        if use_terminal_width then
-            local out = pandoc.pipe('tput', {'cols'}, '')
-            local num = tonumber(out, 10)
+        if not use_terminal_width then
+            return
+        end
+        local out = pandoc.pipe('tput', {'cols'}, '')
+        local num = tonumber(out, 10)
+        if num then
+            opts.columns = math.min(180, math.max(num - (5 * TEXT_INDENT), TEXT_WIDTH))
+            return
+        end
+        out = string_split(pandoc.pipe('stty', {'size'}, ''), '[^ ]+')
+        if #out == 2 then
+            num = tonumber(out[2], 10)
             if num then
-                opts.columns = math.min(140, math.max(num - 3, TEXT_WIDTH))
-            else
-                out = string_split(pandoc.pipe('stty', {'size'}, ''), '[^ ]+')
-                if #out == 2 then
-                    num = tonumber(out[2], 10)
-                    if num then
-                        opts.columns = math.min(140, math.max(num - 3, TEXT_WIDTH))
-                    end
-                end
+                opts.columns = math.min(180, math.max(num - (5 * TEXT_INDENT), TEXT_WIDTH))
             end
         end
     end
@@ -79,74 +80,35 @@ local function has_attributes(el)
     (#el.attr.identifier > 0 or #el.attr.classes > 0 or #el.attr.attributes > 0)
 end
 
--- local function render_attributes(el, isblock, opts)
---     if not has_attributes(el) then
---         return empty
---     end
---     local attr = el.attr
---     local buff = {"{"}
---     if #attr.identifier > 0 then
---         buff[#buff + 1] = "#" .. attr.identifier
---     end
---     for i=1,#attr.classes do
---         if #buff > 1 then
---             buff[#buff + 1] = space
---         end
---         buff[#buff + 1] = "." .. attr.classes[i]
---     end
---     for k,v in pairs(attr.attributes) do
---         if #buff > 1 then
---             buff[#buff + 1] = space
---         end
---         buff[#buff + 1] = k .. '="' .. v:gsub('"', '\\"') .. '"'
---     end
---     buff[#buff + 1] = "}"
---     if isblock then
---         return rblock(nowrap(concat(buff)), opts.columns)
---         -- return concat(buff)
---     else
---         return concat(buff)
---     end
--- end
-
--- Blocks = {}
--- Blocks.mt = {}
--- Blocks.mt.__index = function(tbl,key)
---   return function() io.stderr:write("Unimplemented " .. key .. "\n") end
--- end
--- setmetatable(Blocks, Blocks.mt)
-
--- Inlines = {}
--- Inlines.mt = {}
--- Inlines.mt.__index = function(tbl,key)
---   return function() io.stderr:write("Unimplemented " .. key .. "\n") end
--- end
--- setmetatable(Inlines, Inlines.mt)
-
--- local function inlines(ils)
---   local buff = {}
---   for i=1,#ils do
---     local el = ils[i]
---     buff[#buff + 1] = Inlines[el.tag](el)
---   end
---   return concat(buff)
--- end
-
--- local function blocks(bs, opts, sep)
---     local dbuff = {}
---     if #bs > 0 then
---         local el = bs[1]
---         dbuff[1] = Writer.Block[el.tag](el, opts)
---         for i = 2, #bs do
---             local el = bs[i]
---             if el.tag ~= 'CodeBlock' and bs[i - 1].tag ~= 'CodeBlock' then
---                 dbuff[#dbuff + 1] = sep
---             end
---             dbuff[#dbuff + 1] = Writer.Block[el.tag](el, opts)
---         end
---     end
---     return concat(dbuff)
--- end
+-- for debugging purpose only
+local function render_attributes(el, isblock, opts)
+    if not has_attributes(el) then
+        return empty
+    end
+    local attr = el.attr
+    local buff = {"{"}
+    if #attr.identifier > 0 then
+        buff[#buff + 1] = "#" .. attr.identifier
+    end
+    for i=1,#attr.classes do
+        if #buff > 1 then
+            buff[#buff + 1] = space
+        end
+        buff[#buff + 1] = "." .. attr.classes[i]
+    end
+    for k,v in pairs(attr.attributes) do
+        if #buff > 1 then
+            buff[#buff + 1] = space
+        end
+        buff[#buff + 1] = k .. '="' .. v:gsub('"', '\\"') .. '"'
+    end
+    buff[#buff + 1] = "}"
+    if isblock then
+        return rblock(nowrap(concat(buff)), opts.columns)
+    else
+        return concat(buff)
+    end
+end
 
 local function blocks(bs, opts, sep)
     if emptylines_around_codeblock then
@@ -215,7 +177,8 @@ Writer.Block.Div = function(el, opts)
         if el.attr and el.attr.attributes and el.attr.attributes.number then
             local section = el.attr.attributes.number
             local fragments = string_split(section, '[^.]+')
-            local indent = math.max(0, math.min(2, #fragments - 1)) * TEXT_INDENT
+            -- indent one level always maybe better, since sometimes div with H3 is inside H2.
+            local indent = (#fragments > 1 and #fragments < 4) and (#fragments - 1) * TEXT_INDENT or 0
             local sec = extended_ascii and ('§' .. section) or ('[' .. section .. ']')
             if #fragments < 4 then
                 local schar = #fragments == 3 and sepchars[2] or sepchars[1]
@@ -441,17 +404,7 @@ Writer.Inline.RawInline = function(el)
 end
 
 Writer.Inline.Code = function(el)
-    -- local ticks = 0
-    -- el.text:gsub("(`+)", function(s) if #s > ticks then ticks = #s end end)
-    -- local use_spaces = el.text:match("^`") or el.text:match("`$")
-    -- local start = string.rep("`", ticks + 1) .. (use_spaces and " " or "")
-    -- local finish = (use_spaces and " " or "") .. string.rep("`", ticks + 1)
-    -- local attr = render_attributes(el)
-    -- local result = { start, el.text, finish, attr }
-    -- return concat(result)
-
     local result = { '·', el.text, '·' }
-    -- local result = { el.text }
     return concat(result)
 end
 
@@ -491,10 +444,6 @@ end
 
 Writer.Inline.Link = function(el)
     local src = Writer.Inlines(el.content)
-    -- local rendered = pandoc.write(pandoc.Pandoc({el.content}), "plain")
-    -- if #rendered > 0 then
-    --     rendered = rendered:sub(1, #rendered - 1)
-    -- end
     local rendered = pandoc.utils.stringify(el.content)
     local idx = string.find(rendered, ' ')
     if idx == nil then
@@ -509,12 +458,6 @@ Writer.Inline.Link = function(el)
 end
 
 Writer.Inline.Image = function(el)
-    -- if el.title and #el.title > 0 then
-    --     el.attributes.title = el.title
-    --     el.title = nil
-    -- end
-    -- local attr = render_attributes(el)
-    -- local result = {"![", Writer.Inlines(el.caption), "](", el.src, ")", attr}
     local result = {"![", Writer.Inlines(el.caption), "](", el.src, ")"}
     return concat(result)
 end
@@ -532,27 +475,3 @@ Writer.Inline.Note = function(el)
     local num = #footnotes
     return literal(format("[^%d]", num))
 end
-
--- function Writer (doc, opts)
---   PANDOC_WRITER_OPTIONS = opts
---   local d = blocks(doc.blocks, blankline)
---   local notes = {}
---   for i=1,#footnotes do
---     local note = hang(blocks(footnotes[i], blankline), 4, concat{format("[^%d]:",i),space})
---     table.insert(notes, note)
---   end
---   local formatted = concat{d, blankline, concat(notes, blankline)}
---   if PANDOC_WRITER_OPTIONS.wrap_text == "wrap-none" then
---     return layout.render(formatted)
---   else
---     return layout.render(formatted, opts.columns)
---   end
--- end
-
--- Writer.Inline.Link = function (link)
---     return "$" .. Writer.Inlines(link.content) .. ':' .. link.target .. "$"
--- end
-
--- Writer.Block.Header = function(h)
---     return "<h" .. h.level.. ">" .. Writer.Inlines(h.content) .. "</h>"
--- end
