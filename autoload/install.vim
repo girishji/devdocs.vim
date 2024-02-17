@@ -33,6 +33,10 @@ def Extract(outdir: string): bool
             return false
         endif
     endfor
+    if outdir->isdirectory() && outdir->delete('rf') != 0
+        :echohl ErrorMsg | echoerr $'Failed to remove {outdir}' | echohl None
+        return false
+    endif
     $'mv {tmpdir} {outdir}'->system()
     if v:shell_error != 0
         :echohl ErrorMsg | echoerr $'Failed to rename {outdir}' | echohl None
@@ -88,7 +92,9 @@ def ShowMenu(items: list<dict<any>>)
             return [lst, matches]
         endif
     enddef
-    popup.FilterMenu("Devdocs Install", items,
+    # popup.FilterMenu("Devdocs Install", items,
+    popup.FilterMenuPopup.new().PopupCreate('Devdocs Install',
+        items,
         (res, key) => {
             FetchSlug(res.data)
         },
@@ -104,7 +110,6 @@ export def Install()
                 docs = msg->json_decode()
             catch
                 :echohl ErrorMsg | echoerr $'Failed to fetch devdocs index ({v:exception})' | echohl None
-                # :echohl ErrorMsg | echoerr $'Failed to fetch devdocs index ({msg})' | echohl None
                 return
             endtry
             var items = docs->mapnew((_, v) => {
