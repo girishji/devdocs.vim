@@ -16,7 +16,7 @@ export class FilterMenuPopup
     var items_dict: list<dict<any>>
     var filtered_items: list<any>
 
-    def PopupCreate(title: string, items_dict: list<dict<any>>, Callback: func(any, string), Setup: func(number) = null_function, GetItems: func(list<any>, string): list<any> = null_function, is_hidden: bool = false, winheight: number = 0, winwidth: number = 0)
+    def new(title: string, items_dict: list<dict<any>>, Callback: func(any, string), Setup: func(number) = null_function, GetItems: func(list<any>, string): list<any> = null_function, is_hidden: bool = false, winheight: number = 0, winwidth: number = 0)
         if empty(prop_type_get('FilterMenuMatch'))
             highlight default FilterMenuMatch term=bold cterm=bold gui=bold
             prop_type_add('FilterMenuMatch', {highlight: "FilterMenuMatch", override: true, priority: 1000, combine: true})

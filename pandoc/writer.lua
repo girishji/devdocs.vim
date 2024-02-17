@@ -1,5 +1,6 @@
 -- custom pandoc writer to convert AST to devdoc file
--- example: https://github.com/jgm/djot.lua/blob/main/djot-writer.lua
+-- examples: https://github.com/jgm/djot.lua/blob/main/djot-writer.lua
+--  and pandoc/pandoc-lua-engine/test/sample.lua
 
 Writer = pandoc.scaffolding.Writer
 

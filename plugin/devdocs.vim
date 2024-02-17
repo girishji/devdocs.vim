@@ -5,6 +5,8 @@ endif
 vim9script
 
 import autoload 'install.vim'
+import autoload 'uninstall.vim'
 nnoremap <leader>h <scriptcmd>install.Install()<CR>
 # command DevdocsInstall <scriptcmd>install.Install()
+nnoremap <leader>H <scriptcmd>uninstall.Uninstall()<CR>
 

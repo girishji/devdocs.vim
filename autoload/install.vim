@@ -76,6 +76,8 @@ def FetchSlug(entry: dict<any>)
                 if Extract(outdir)
                     notif.Update(Text('Success!'))
                     :sleep 300m
+                elseif tmpdir->isdirectory()
+                    tmpdir->delete('rf')
                 endif
             endif
             notif.Close()
@@ -92,8 +94,7 @@ def ShowMenu(items: list<dict<any>>)
             return [lst, matches]
         endif
     enddef
-    # popup.FilterMenu("Devdocs Install", items,
-    popup.FilterMenuPopup.new().PopupCreate('Devdocs Install',
+    popup.FilterMenuPopup.new('Devdocs Install',
         items,
         (res, key) => {
             FetchSlug(res.data)
