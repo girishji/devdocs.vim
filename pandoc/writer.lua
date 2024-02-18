@@ -26,8 +26,6 @@ local doublequote = extended_ascii and { '"', '"'} or {'"', '"'}
 local singlequote = extended_ascii and { "'", "'"} or {"'", "'"}
 
 local function string_split(str, pat)
-    -- fn('1.2.44' '[^.]+') -> '1', '2', '44'
-    -- fn('1.2.44' '.') -> '1', '.', '2', '.', '44'
     local split = {}
     for s in str:gmatch(pat) do
         table.insert(split, s)
@@ -44,7 +42,7 @@ local function set_columns(opts)
         end
         local out = pandoc.pipe('tput', {'cols'}, '')
         local num = tonumber(out, 10)
-        local right_margin = 3 * TEXT_INDENT
+        local right_margin = 2 * TEXT_INDENT
         if num then
             opts.columns = math.min(300, math.max(num - right_margin, 70))
             return
@@ -112,51 +110,146 @@ local function render_attributes(el, isblock, opts)
     end
 end
 
-local function blocks(bs, opts, sep)
-    if emptylines_around_codeblock then
-        return Writer.Blocks(bs)
+-- local function blocks(bs, opts, sep)
+--     if emptylines_around_codeblock then
+--         return Writer.Blocks(bs)
+--     end
+--     -- remove empty lines above and below CodeBlock
+--     --   Writer.Blocks() automatically inserts blankline between blocks
+--     local docs = {}
+--     local blocks = {}
+--     for i, block in ipairs(bs) do
+--         if block.tag == 'CodeBlock' or (block.tag == 'BlockQuote' and
+--             #block.content > 0 and block.content[1].tag == 'CodeBlock') then
+--             if blocks then
+--                 table.insert(docs, Writer.Blocks(blocks))
+--                 blocks = {}
+--             end
+--             if block.tag == 'CodeBlock' then
+--                 table.insert(docs, concat{cr, Writer.Block.CodeBlock(block, opts), cr})
+--             else
+--                 table.insert(docs, concat{cr, Writer.Block.BlockQuote(block, opts), cr})
+--             end
+--         else
+--             table.insert(blocks, block)
+--         end
+--     end
+--     if blocks then
+--         table.insert(docs, Writer.Blocks(blocks))
+--     end
+--     return concat(docs)
+-- end
+
+local function markup(doc)
+    local function desurround(line, ch, extended_ascii)
+        local captures = {}
+        local pat = ch .. '([^' .. ch .. ']+)' .. ch
+        local s, e, capture = line:find(pat)
+        while s do
+            -- utf-8 extended ascii char (256-512) takes 2 bytes
+            table.insert(captures, {capture, lnum, s, e - (extended_ascii and 4 or 2)})
+            s, e, capture = line:find(pat, e + 1)
+        end
+        return captures
     end
-    -- remove empty lines above and below CodeBlock
-    --   Writer.Blocks() automatically inserts blankline between blocks
-    local docs = {}
-    local blocks = {}
-    for i, block in ipairs(bs) do
-        if block.tag == 'CodeBlock' or (block.tag == 'BlockQuote' and
-            #block.content > 0 and block.content[1].tag == 'CodeBlock') then
-            if blocks then
-                table.insert(docs, Writer.Blocks(blocks))
-                blocks = {}
-            end
-            if block.tag == 'CodeBlock' then
-                table.insert(docs, concat{cr, Writer.Block.CodeBlock(block, opts), cr})
-            else
-                table.insert(docs, concat{cr, Writer.Block.BlockQuote(block, opts), cr})
-            end
+    local res = {}
+    local formatted = {}
+    local lnum = 1
+    local startl = 1
+    local endl = doc:find('\n', 1, true)
+    local target, pre, defn = {}, {}, {}
+    local h = {{}, {}, {}, {}, {}, {}}
+    local mchar = {'¦', '‡', '†', '·'}
+    local marker = {{}, {}, {}, {}}
+    local startpre = -1
+    while endl do
+        local line = doc:sub(startl, endl - 1)  -- remove \n from the end
+        if line:find('%s*>$') then
+            startpre = lnum
+        elseif startpre ~= -1 and line:find('%s*<$') then
+            table.insert(pre, {startpre, lnum})
+            startpre = -1
         else
-            table.insert(blocks, block)
+            local st, en, capture = line:find('%s*::: ([^ ]+)')
+            if st then
+                table.insert(target, capture)
+            else
+                if line:find(' ¶$') then
+                    table.insert(defn, lnum)
+                    line = line:sub(1, #line - 3)
+                elseif line:find('~$') then
+                    for i = 1, 6 do
+                        if line:find(' ' .. string.rep('~', i) .. '$') then
+                            table.insert(h[i], lnum)
+                            line = line:sub(1, #line - i - 1)
+                        end
+                    end
+                end
+                for i, ch in ipairs(mchar) do
+                    local elems = desurround(line, ch, true)
+                    local container = marker[i]
+                    table.move(elems, 1, #elems, #container + 1, container)
+                end
+                for _, ch in ipairs(mchar) do
+                    line = line:gsub(ch, '')
+                end
+                table.insert(formatted, line .. '\n')
+                lnum = lnum + 1
+            end
+        end
+        startl = endl + 1
+        endl = doc:find('\n', startl, true)
+    end
+    for _, hotlink in ipairs(marker[1]) do
+        local found = false
+        for lnk in pairs(links) do
+            if hotlink[1] == lnk then
+                found = true
+                break
+            end
+        end
+        if not found then
+            print('missing')
+            print(table.unpack(hotlink))
         end
     end
-    if blocks then
-        table.insert(docs, Writer.Blocks(blocks))
-    end
-    return concat(docs)
+    -- print('emph')
+    -- for _, item in ipairs(emph) do
+    --     print(table.unpack(item))
+    -- end
+    -- print('strong')
+    -- for _, item in ipairs(strong) do
+    --     print(table.unpack(item))
+    -- end
+
+    res.link = marker[1]
+    -- for _, lnk in ipairs(links) do
+    --     print(table.unpack(lnk))
+    -- end
+    res.doc = formatted
+    return res
 end
+
 
 Writer.Pandoc = function(doc, opts)
     set_columns(opts)
     local sectioned = pandoc.utils.make_sections(true, nil, doc.blocks)
-    local d = blocks(sectioned, opts, blankline)
+    -- local d = Writer.Blocks(sectioned, opts, blankline)
+    local d = Writer.Blocks(sectioned)
     local notes = {}
     for i=1,#footnotes do
         local note = hang(Writer.Blocks(footnotes[i]), TEXT_INDENT, concat{format("[^%d]:",i),space})
         table.insert(notes, note)
     end
-    local hotlinks = { '>>>>>>>>>><<<<<<<<<<' }
-    for key, val in pairs(links) do
-        table.insert(hotlinks, concat{key, '\t', val})
-    end
-    local formatted = concat{d, blankline, concat(notes, blankline), blankline, concat(hotlinks, cr)}
-    return layout.render(formatted, opts.columns)
+    local formatted = concat{d, blankline, concat(notes, blankline)}
+    local doc = layout.render(formatted, opts.columns)
+    -- local formatted = concat{d, blankline, concat(notes, blankline), blankline, concat(hotlinks, cr)}
+    -- local hotlinks = { '>>>>>>>>>><<<<<<<<<<' }
+    -- for key, val in pairs(links) do
+    --     table.insert(hotlinks, concat{key, '\t', val})
+    -- end
+    local formatted = markup(doc)
+    return concat{table.concat(formatted.doc), cr}
 end
 
 Writer.Block.Header = function(el, opts)
@@ -164,17 +257,18 @@ Writer.Block.Header = function(el, opts)
     if el.level < 5 then
         result = {}
         -- for _, str in ipairs({ Writer.Inlines(el.content), space, '~' }) do
-        for _, str in ipairs({ Writer.Inlines(el.content), space, string.rep('~', el.level) }) do
+        for _, str in ipairs({Writer.Inlines(el.content), space, string.rep('~', math.min(4, el.level))}) do
             table.insert(result, str)
         end
     else
         result = { Writer.Inlines(el.content), space, '~' }
     end
-    return concat(result)
+    return nowrap(concat(result))
 end
 
 Writer.Block.Div = function(el, opts)
-    local doc = blocks(el.content, opts, blankline)
+    -- local doc = Writer.Blocks(el.content, opts, blankline)
+    local doc = Writer.Blocks(el.content)
     if el.classes:includes("section") then
         if el.attr and el.attr.attributes and el.attr.attributes.number then
             local section = el.attr.attributes.number
@@ -285,7 +379,7 @@ Writer.Block.Table = function(el, opts)
         return filter
     end
     local savedcols = opts.columns
-    opts.columns = opts.columns - 2 * TEXT_INDENT
+    opts.columns = opts.columns - TEXT_INDENT
     local table = pandoc.write(pandoc.Pandoc({el}):walk(filter()), "rst", opts)
     opts.columns = savedcols
     if extended_ascii then
@@ -448,18 +542,13 @@ Writer.Inline.Math = function(el)
 end
 
 Writer.Inline.Link = function(el)
-    local src = Writer.Inlines(el.content)
-    local rendered = pandoc.utils.stringify(el.content)
-    local idx = string.find(rendered, ' ')
-    if idx == nil then
-        idx = string.find(rendered, 'http')
-        if idx == nil then
-            links[rendered] = el.target
-            local result = {"¦", rendered, "¦"}
-            return concat(result)
-        end
+    if string.find(el.target, 'http') == nil then
+        local rendered = pandoc.utils.stringify(el.content)
+        links[rendered] = el.target
+        local result = {"¦", rendered, "¦"}
+        return nowrap(concat(result))
     end
-    return src
+    return Writer.Inlines(el.content)
 end
 
 Writer.Inline.Image = function(el)
