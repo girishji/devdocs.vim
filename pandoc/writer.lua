@@ -14,7 +14,7 @@ local literal, empty, cr, concat, blankline, chomp, space, cblock, rblock,
     layout.prefixed, layout.nest, layout.hang, layout.nowrap, layout.height
 local footnotes = {}
 local links = {}
-local TEXT_INDENT = 3
+local TEXT_INDENT = 4
 local TEXT_WIDTH = 80
 local emptylines_around_codeblock = false
 local use_terminal_width = true
@@ -44,15 +44,16 @@ local function set_columns(opts)
         end
         local out = pandoc.pipe('tput', {'cols'}, '')
         local num = tonumber(out, 10)
+        local right_margin = 3 * TEXT_INDENT
         if num then
-            opts.columns = math.min(180, math.max(num - (5 * TEXT_INDENT), TEXT_WIDTH))
+            opts.columns = math.min(300, math.max(num - right_margin, 70))
             return
         end
         out = string_split(pandoc.pipe('stty', {'size'}, ''), '[^ ]+')
         if #out == 2 then
             num = tonumber(out[2], 10)
             if num then
-                opts.columns = math.min(180, math.max(num - (5 * TEXT_INDENT), TEXT_WIDTH))
+                opts.columns = math.min(300, math.max(num - right_margin, 70))
             end
         end
     end
@@ -162,8 +163,8 @@ Writer.Block.Header = function(el, opts)
     local result = {}
     if el.level < 5 then
         result = {}
-        for _, str in ipairs({ Writer.Inlines(el.content), space, '~' }) do
-        -- for _, str in ipairs({ Writer.Inlines(el.content), space, string.rep('~', el.level) }) do
+        -- for _, str in ipairs({ Writer.Inlines(el.content), space, '~' }) do
+        for _, str in ipairs({ Writer.Inlines(el.content), space, string.rep('~', el.level) }) do
             table.insert(result, str)
         end
     else
@@ -178,11 +179,11 @@ Writer.Block.Div = function(el, opts)
         if el.attr and el.attr.attributes and el.attr.attributes.number then
             local section = el.attr.attributes.number
             local fragments = string_split(section, '[^.]+')
-            -- indent one level always maybe better, since sometimes div with H3 is inside H2.
-            local indent = (#fragments > 1 and #fragments < 4) and (#fragments - 1) * TEXT_INDENT or 0
+            -- apply one unit of indent per heading level (even if levels may or may not be nested)
+            local indent = (#fragments > 1 and #fragments < 4) and TEXT_INDENT or 0
             local sec = extended_ascii and ('§' .. section) or ('[' .. section .. ']')
             if #fragments < 4 then
-                local schar = #fragments == 3 and sepchars[2] or sepchars[1]
+                local schar = #fragments == 1 and sepchars[1] or sepchars[2]
                 local slen = opts.columns - indent - 1 - string.len(sec)
                 sec = nowrap(concat{string.rep(schar, slen), space, sec})
             else
@@ -207,7 +208,7 @@ Writer.Block.RawBlock = function(el)
     if el.format == "devdoc" then
         return concat({el.text})
     elseif el.format == "rst_table" then
-        local lines = string_split(el.text, "[^\r\n]+")
+        local lines = string_split(el.text, "[^\r\n]+")  -- \r is CR (ascii 13), \n is LF (ascii 10)
         local formatted = {}
         for i, s in ipairs(lines) do
             local str = empty
@@ -283,7 +284,10 @@ Writer.Block.Table = function(el, opts)
         end
         return filter
     end
+    local savedcols = opts.columns
+    opts.columns = opts.columns - 2 * TEXT_INDENT
     local table = pandoc.write(pandoc.Pandoc({el}):walk(filter()), "rst", opts)
+    opts.columns = savedcols
     if extended_ascii then
         return Writer.Block.RawBlock(pandoc.RawBlock('rst_table', table))
     else
@@ -353,7 +357,7 @@ Writer.Block.OrderedList = function(el)
 end
 
 Writer.Block.CodeBlock = function(el)
-    return concat{ '>', cr, nest(el.text:gsub('%s*$', ''), 2), cr, '<' }
+    return concat{ '>', cr, nest(el.text:gsub('%s*$', ''), TEXT_INDENT), cr, '<' }
 end
 
 do

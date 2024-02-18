@@ -28,7 +28,9 @@ def Extract(outdir: string): bool
             return false
         endif
         var filename = $'{tmpdir}/{fname}.html'
-        if [content]->writefile(filename) == -1
+        # splitting along \n is necessary to avoid NUL char in file
+        # https://superuser.com/questions/935574/get-rid-of-null-character-in-vim-variable
+        if content->trim()->split('\n')->writefile(filename) == -1
             :echohl ErrorMsg | echoerr $'Failed to write {filename}' | echohl None
             return false
         endif
@@ -75,7 +77,7 @@ def FetchSlug(entry: dict<any>)
                 notif.Update(Text('Extracting archive ...'))
                 if Extract(outdir)
                     notif.Update(Text('Success!'))
-                    :sleep 300m
+                    :sleep 500m
                 elseif tmpdir->isdirectory()
                     tmpdir->delete('rf')
                 endif

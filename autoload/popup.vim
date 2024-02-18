@@ -172,7 +172,7 @@ export class NotificationPopup
         this.id->popup_settext(text)
     enddef
 
-    def new(text: list<string>, DismissedCb: func)
+    def new(text: list<string>, DismissedCb: func = null_function)
         var winid = popup_create(text, {
             minwidth: 35,
             zindex: 300,
@@ -192,7 +192,7 @@ export class NotificationPopup
                 return true
             },
             callback: (id, result) => {
-                if result == 1
+                if result == 1 && DismissedCb != null_function
                     DismissedCb()
                 endif
             }
