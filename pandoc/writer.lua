@@ -56,6 +56,24 @@ local function set_columns(opts)
         end
     end
 end
+local format_number = {}
+format_number.Decimal = function(n)
+    return format("%d", n)
+end
+format_number.Example = format_number.Decimal
+format_number.DefaultStyle = format_number.Decimal
+format_number.LowerAlpha = function(n)
+    return string.char(96 + (n % 26))
+end
+format_number.UpperAlpha = function(n)
+    return string.char(64 + (n % 26))
+end
+format_number.UpperRoman = function(n)
+    return to_roman(n)
+end
+format_number.LowerRoman = function(n)
+    return string.lower(to_roman(n))
+end
 
 local function is_tight_list(el)
     if not (el.tag == "BulletList" or el.tag == "OrderedList" or
@@ -319,8 +337,8 @@ Writer.Pandoc = function(doc, opts)
     --     table.insert(hotlinks, concat{key, '\t', val})
     -- end
     local payload = demarkup(doc)
-    return concat{table.concat(payload.doc), cr}
-    -- return pandoc.json.encode(payload)
+    -- return concat{table.concat(payload.doc), cr}
+    return pandoc.json.encode(payload)
 end
 
 Writer.Block.Header = function(el, opts)

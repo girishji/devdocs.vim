@@ -50,6 +50,35 @@ var data_dir = '~/.local/share/devdocs'
 # enddef
 
 def FetchDoc(entry: dict<any>)
+    var fpath = entry.data.path
+    var idx = fpath->strridx('#')
+    var tag = ''
+    if idx != -1
+        tag = fpath->slice(idx + 1)
+        fpath = fpath->slice(0, idx)
+    endif
+    fpath = $'{data_dir}/{entry.slug}/{fpath}.html'->expand()->fnameescape()
+    if !fpath->filereadable()
+        :echohl ErrorMsg | echoerr $'Failed to read {fpath}' | echohl None
+        return
+    endif
+    if 'pandoc'->exepath() == ''
+        :echohl ErrorMsg | echoerr $'Failed to find pandoc' | echohl None
+        return
+    endif
+    var scriptdir = getscriptinfo({name: 'devdocs'})[0].name->fnamemodify(':h:h')
+    task.AsyncCmd.new(
+        $'pandoc -t {scriptdir}/pandoc/writer.lua {fpath}',
+        (msg: string) => {
+            var doc: dict<any>
+            try
+                doc = msg->json_decode()
+            catch
+                :echohl ErrorMsg | echoerr $'Pandoc failed ({v:exception})' | echohl None
+                return
+            endtry
+            echom doc.doc
+        })
 enddef
 #     if entry.slug->empty() | return | endif
 #     var outdir = $'{data_dir}/{entry.slug}'->expand()->fnameescape()
@@ -73,23 +102,6 @@ enddef
 #             aborted = true
 #             tmpdir->isdirectory() && tmpdir->delete('rf')
 #         })
-#     var url = $'{devdocs_cdn_url}/{entry.slug}/{{index,db}}.json?{entry.mtime}'
-#     atask = task.AsyncCmd.new(
-#         $'curl -fsSL --remote-name-all --output-dir {tmpdir} --create-dirs "{url}"',
-#         (msg: string) => {
-#             if !aborted && $'{tmpdir}/index.json'->filereadable() && $'{tmpdir}/db.json'->filereadable()
-#                 notif.Update(Text('Extracting archive ...'))
-#                 # 100 MB json file takes 30s to extract
-#                 if Extract(outdir)
-#                     echom $'{entry.slug} installed successfully in {data_dir}'
-#                     notif.Update(Text('Success!'))
-#                     :sleep 500m
-#                 elseif tmpdir->isdirectory()
-#                     tmpdir->delete('rf')
-#                 endif
-#             endif
-#             notif.Close()
-#         })
 # enddef
 
 def ShowMenu(items: list<dict<any>>)
@@ -105,7 +117,7 @@ def ShowMenu(items: list<dict<any>>)
     popup.FilterMenuPopup.new('Devdocs',
         items,
         (res, key) => {
-            FetchDoc(res.data)
+            FetchDoc(res)
         },
         (winid) => {
             win_execute(winid, "syn match FilterMenuAttributesSubtle ' ‹.*$'")
@@ -140,7 +152,7 @@ export def Find()
         try
             var jlist = fdata->json_decode()
             items->extend(jlist.entries->mapnew((_, v) => {
-                return {text: $'{v.name} ‹{slug}› {v.type}', name: v.name, data: v}
+                return {text: $'{v.name} ‹{slug}› {v.type}', name: v.name, slug: slug, data: v}
             }))
         catch
             :echohl WarningMsg | echom $'{slug}/index.json decode failed ({v:exception})' | echohl None
