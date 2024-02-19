@@ -1,7 +1,7 @@
 vim9script
 
 import './popup.vim'
-import './job.vim'
+import './task.vim'
 
 var data_dir = '~/.local/share/devdocs'
 var devdocs_site_url = 'https://devdocs.io'
@@ -56,26 +56,29 @@ def FetchSlug(entry: dict<any>)
         return
     endif
     def Text(t: string): list<string>
-        return [t, '', 'This may take a few minutes', '', '<Esc> to dismiss window', '<C-c> to abort job']
+        return [t, '', 'This may take up to a minute', '', '<Esc> to dismiss window', '<C-c> to abort job']
     enddef
-    var task: any
+    var atask: task.AsyncCmd
     var notif: popup.NotificationPopup
     var aborted = false
     notif = popup.NotificationPopup.new(Text($'Downloading {entry.db_size} bytes ...'),
         () => {
-            # <C-c> was pressed
-            if task->type() == v:t_object
-                task.Stop()
+            # <C-c> was pressed.
+            if atask->type() == v:t_object
+                atask.Stop()
             endif
             aborted = true
+            tmpdir->isdirectory() && tmpdir->delete('rf')
         })
     var url = $'{devdocs_cdn_url}/{entry.slug}/{{index,db}}.json?{entry.mtime}'
-    task = job.AsyncCmd.new(
+    atask = task.AsyncCmd.new(
         $'curl -fsSL --remote-name-all --output-dir {tmpdir} --create-dirs "{url}"',
         (msg: string) => {
             if !aborted && $'{tmpdir}/index.json'->filereadable() && $'{tmpdir}/db.json'->filereadable()
                 notif.Update(Text('Extracting archive ...'))
+                # 100 MB json file takes 30s to extract
                 if Extract(outdir)
+                    echom $'{entry.slug} installed successfully in {data_dir}'
                     notif.Update(Text('Success!'))
                     :sleep 500m
                 elseif tmpdir->isdirectory()
@@ -106,7 +109,7 @@ def ShowMenu(items: list<dict<any>>)
 enddef
 
 export def Install()
-    job.AsyncCmd.new($'curl -fsSL {devdocs_site_url}/docs.json',
+    task.AsyncCmd.new($'curl -fsSL {devdocs_site_url}/docs.json',
         (msg: string) => {
             var docs: list<any>
             try

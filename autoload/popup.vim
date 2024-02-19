@@ -185,14 +185,13 @@ export class NotificationPopup
             drag: 0,
             filter: (id, key) => {
                 if key == "\<esc>"
-                    popup_close(id, -1)
-                elseif key == "\<c-c>"
-                    popup_close(id, 1)
+                    popup_close(id, -2)
                 endif
                 return true
             },
             callback: (id, result) => {
-                if result == 1 && DismissedCb != null_function
+                # <C-c> sends -1 automatically
+                if result == -1 && DismissedCb != null_function
                     DismissedCb()
                 endif
             }

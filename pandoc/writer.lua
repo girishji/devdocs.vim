@@ -16,11 +16,11 @@ local footnotes = {}
 local links = {}
 local TEXT_INDENT = 4
 local TEXT_WIDTH = 80
+local marker = {link = '¦', strong = '‡', emph = '†', code = '·', underline = '¿'}
 local emptylines_around_codeblock = false
 local use_terminal_width = true
 -- only for unicode font sets, not for 'fixedsys' font.
 local extended_ascii = true
--- local extended_ascii = false
 local sepchars = extended_ascii and { '═', '—' } or { '=', '-' }
 local doublequote = extended_ascii and { '"', '"'} or {'"', '"'}
 local singlequote = extended_ascii and { "'", "'"} or {"'", "'"}
@@ -75,40 +75,40 @@ local function is_tight_list(el)
     return true
 end
 
-local function has_attributes(el)
-    return el.attr and
-    (#el.attr.identifier > 0 or #el.attr.classes > 0 or #el.attr.attributes > 0)
-end
+-- local function has_attributes(el)
+--     return el.attr and
+--     (#el.attr.identifier > 0 or #el.attr.classes > 0 or #el.attr.attributes > 0)
+-- end
 
--- for debugging purpose only
-local function render_attributes(el, isblock, opts)
-    if not has_attributes(el) then
-        return empty
-    end
-    local attr = el.attr
-    local buff = {"{"}
-    if #attr.identifier > 0 then
-        buff[#buff + 1] = "#" .. attr.identifier
-    end
-    for i=1,#attr.classes do
-        if #buff > 1 then
-            buff[#buff + 1] = space
-        end
-        buff[#buff + 1] = "." .. attr.classes[i]
-    end
-    for k,v in pairs(attr.attributes) do
-        if #buff > 1 then
-            buff[#buff + 1] = space
-        end
-        buff[#buff + 1] = k .. '="' .. v:gsub('"', '\\"') .. '"'
-    end
-    buff[#buff + 1] = "}"
-    if isblock then
-        return rblock(nowrap(concat(buff)), opts.columns)
-    else
-        return concat(buff)
-    end
-end
+-- -- for debugging purpose only
+-- local function render_attributes(el, isblock, opts)
+--     if not has_attributes(el) then
+--         return empty
+--     end
+--     local attr = el.attr
+--     local buff = {"{"}
+--     if #attr.identifier > 0 then
+--         buff[#buff + 1] = "#" .. attr.identifier
+--     end
+--     for i=1,#attr.classes do
+--         if #buff > 1 then
+--             buff[#buff + 1] = space
+--         end
+--         buff[#buff + 1] = "." .. attr.classes[i]
+--     end
+--     for k,v in pairs(attr.attributes) do
+--         if #buff > 1 then
+--             buff[#buff + 1] = space
+--         end
+--         buff[#buff + 1] = k .. '="' .. v:gsub('"', '\\"') .. '"'
+--     end
+--     buff[#buff + 1] = "}"
+--     if isblock then
+--         return rblock(nowrap(concat(buff)), opts.columns)
+--     else
+--         return concat(buff)
+--     end
+-- end
 
 -- local function blocks(bs, opts, sep)
 --     if emptylines_around_codeblock then
@@ -140,39 +140,113 @@ end
 --     return concat(docs)
 -- end
 
-local function markup(doc)
+-- local function json_encode(val)
+--     local escape_char_map = {
+--         [ "\\" ] = "\\",
+--         [ "\"" ] = "\"",
+--         [ "\b" ] = "b",
+--         [ "\f" ] = "f",
+--         [ "\n" ] = "n",
+--         [ "\r" ] = "r",
+--         [ "\t" ] = "t",
+--     }
+--     local escape_char_map_inv = { [ "/" ] = "/" }
+--     for k, v in pairs(escape_char_map) do
+--         escape_char_map_inv[v] = k
+--     end
+--     local function escape_char(c)
+--         return "\\" .. (escape_char_map[c] or string.format("u%04x", c:byte()))
+--     end
+--     local function encode_string(val)
+--         return '"' .. val:gsub('[%z\1-\31\\"]', escape_char) .. '"'
+--     end
+--     local function encode_number(val)
+--         -- Check for NaN, -inf and inf
+--         if val ~= val or val <= -math.huge or val >= math.huge then
+--             error("unexpected number value '" .. tostring(val) .. "'")
+--         end
+--         return string.format("%.14g", val)
+--     end
+--     local function encode_nil(val)
+--         return "null"
+--     end
+--     local function encode_table(val)
+--         local res = {}
+--         if rawget(val, 1) ~= nil or next(val) == nil then
+--             -- Treat as array
+--             for i, v in ipairs(val) do
+--                 table.insert(res, encode(v))
+--             end
+--             return "[" .. table.concat(res, ",") .. "]"
+--         else
+--             -- Treat as an object
+--             for k, v in pairs(val) do
+--                 if type(k) ~= "string" then
+--                     error("invalid table: mixed or invalid key types")
+--                 end
+--                 table.insert(res, encode(k) .. ":" .. encode(v))
+--             end
+--             return "{" .. table.concat(res, ",") .. "}"
+--         end
+--     end
+--     local type_func_map = {
+--         [ "nil"     ] = encode_nil,
+--         [ "table"   ] = encode_table,
+--         [ "string"  ] = encode_string,
+--         [ "number"  ] = encode_number,
+--         [ "boolean" ] = tostring,
+--     }
+--     encode = function(val)
+--         local t = type(val)
+--         local f = type_func_map[t]
+--         if f then
+--             return f(val)
+--         end
+--         error("unexpected type '" .. t .. "'")
+--     end
+--     return ( encode(val) )
+-- end
+
+local function demarkup(doc)
     local function desurround(line, ch, extended_ascii)
         local captures = {}
         local pat = ch .. '([^' .. ch .. ']+)' .. ch
         local s, e, capture = line:find(pat)
         while s do
-            -- utf-8 extended ascii char (256-512) takes 2 bytes
+            -- utf-8 encoding of extended ascii char (256-512) takes 2 bytes (hexdump -C)
             table.insert(captures, {capture, lnum, s, e - (extended_ascii and 4 or 2)})
             s, e, capture = line:find(pat, e + 1)
         end
-        return captures
+        local cleaned = line
+        if #captures > 0 then
+            cleaned = line:gsub(pat, function(cap) return cap end)
+        end
+        return {elems = captures, line = cleaned}
     end
     local res = {}
     local formatted = {}
+    local error = {}
     local lnum = 1
     local startl = 1
     local endl = doc:find('\n', 1, true)
-    local target, pre, defn = {}, {}, {}
+    local tag, codeblock, defn = {}, {}, {}
     local h = {{}, {}, {}, {}, {}, {}}
-    local mchar = {'¦', '‡', '†', '·'}
-    local marker = {{}, {}, {}, {}}
+    local mitems = {}
+    for k in pairs(marker) do
+        mitems[k] = {}
+    end
     local startpre = -1
     while endl do
         local line = doc:sub(startl, endl - 1)  -- remove \n from the end
         if line:find('%s*>$') then
             startpre = lnum
         elseif startpre ~= -1 and line:find('%s*<$') then
-            table.insert(pre, {startpre, lnum})
+            table.insert(codeblock, {startpre, lnum})
             startpre = -1
         else
             local st, en, capture = line:find('%s*::: ([^ ]+)')
             if st then
-                table.insert(target, capture)
+                table.insert(tag, {capture, lnum})
             else
                 if line:find(' ¶$') then
                     table.insert(defn, lnum)
@@ -185,13 +259,11 @@ local function markup(doc)
                         end
                     end
                 end
-                for i, ch in ipairs(mchar) do
-                    local elems = desurround(line, ch, true)
-                    local container = marker[i]
-                    table.move(elems, 1, #elems, #container + 1, container)
-                end
-                for _, ch in ipairs(mchar) do
-                    line = line:gsub(ch, '')
+                for mtype, ch in pairs(marker) do
+                    local res = desurround(line, ch, true)
+                    local container = mitems[mtype]
+                    table.move(res.elems, 1, #(res.elems), #container + 1, container)
+                    line = res.line
                 end
                 table.insert(formatted, line .. '\n')
                 lnum = lnum + 1
@@ -200,33 +272,30 @@ local function markup(doc)
         startl = endl + 1
         endl = doc:find('\n', startl, true)
     end
-    for _, hotlink in ipairs(marker[1]) do
-        local found = false
-        for lnk in pairs(links) do
-            if hotlink[1] == lnk then
-                found = true
-                break
+    local function link_add_target()
+        local function target(src)
+            for lnk, tgt in pairs(links) do
+                if src == lnk then
+                    return tgt
+                end
+            end
+            table.insert(error, 'missing link target for {' .. src .. '}')
+            return nil
+        end
+        local items = {}
+        for _, lnk in ipairs(mitems.link) do
+            local tgt = target(lnk[1])
+            if tgt then
+                table.insert(items, {lnk[1], tgt, lnk[2], lnk[3], lnk[4]})
             end
         end
-        if not found then
-            print('missing')
-            print(table.unpack(hotlink))
-        end
+        return items
     end
-    -- print('emph')
-    -- for _, item in ipairs(emph) do
-    --     print(table.unpack(item))
-    -- end
-    -- print('strong')
-    -- for _, item in ipairs(strong) do
-    --     print(table.unpack(item))
-    -- end
-
-    res.link = marker[1]
-    -- for _, lnk in ipairs(links) do
-    --     print(table.unpack(lnk))
-    -- end
-    res.doc = formatted
+    res.doc, res.error, res.tag, res.codeblock, res.defn, res.link, res.strong, res.emph,
+        res.code, res.underline, res.h1, res.h2, res.h3, res.h4, res.h5, res.h6 =
+        formatted, error, tag, codeblock, defn, link_add_target(),
+        mitems.strong, mitems.emph, mitems.code, mitems.underline,
+        h[1], h[2], h[3], h[4], h[5], h[6]
     return res
 end
 
@@ -242,14 +311,16 @@ Writer.Pandoc = function(doc, opts)
         table.insert(notes, note)
     end
     local formatted = concat{d, blankline, concat(notes, blankline)}
+    -- Doc type returned by layout functions is just a string
     local doc = layout.render(formatted, opts.columns)
     -- local formatted = concat{d, blankline, concat(notes, blankline), blankline, concat(hotlinks, cr)}
     -- local hotlinks = { '>>>>>>>>>><<<<<<<<<<' }
     -- for key, val in pairs(links) do
     --     table.insert(hotlinks, concat{key, '\t', val})
     -- end
-    local formatted = markup(doc)
-    return concat{table.concat(formatted.doc), cr}
+    local payload = demarkup(doc)
+    return concat{table.concat(payload.doc), cr}
+    -- return pandoc.json.encode(payload)
 end
 
 Writer.Block.Header = function(el, opts)
@@ -503,16 +574,16 @@ Writer.Inline.RawInline = function(el)
 end
 
 Writer.Inline.Code = function(el)
-    local result = { '·', el.text, '·' }
+    local result = {marker.code, el.text, marker.code}
     return concat(result)
 end
 
 Writer.Inline.Emph = function(el)
-    return concat{ "†", Writer.Inlines(el.content), "†" }
+    return concat{marker.emph, Writer.Inlines(el.content), marker.emph}
 end
 
 Writer.Inline.Strong = function(el)
-    return concat{ "‡", Writer.Inlines(el.content), "‡" }
+    return concat{marker.strong, Writer.Inlines(el.content), marker.strong}
 end
 
 Writer.Inline.Strikeout = function(el)
@@ -528,24 +599,24 @@ Writer.Inline.Superscript = function(el)
 end
 
 Writer.Inline.Underline = function(el)
-    return concat{ "…", Writer.Inlines(el.content), "…" }
+    return concat{marker.underline, Writer.Inlines(el.content), marker.underline}
 end
 
 Writer.Inline.Math = function(el)
-    local marker
+    local mark
     if el.mathtype == "DisplayMath" then
-        marker = "$$"
+        mark = "$$"
     else
-        marker = "$"
+        mark = "$"
     end
-    return concat{ marker, Inlines.Code(el) }
+    return concat{ mark, Inlines.Code(el) }
 end
 
 Writer.Inline.Link = function(el)
     if string.find(el.target, 'http') == nil then
         local rendered = pandoc.utils.stringify(el.content)
         links[rendered] = el.target
-        local result = {"¦", rendered, "¦"}
+        local result = {marker.link, rendered, marker.link}
         return nowrap(concat(result))
     end
     return Writer.Inlines(el.content)

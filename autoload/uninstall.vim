@@ -30,7 +30,7 @@ export def Uninstall()
             if slugdir->delete('rf') != 0
                 :echohl ErrorMsg | echoerr $'Failed to remove {slugdir}' | echohl None
             endif
-            echom $'{slugdir} successfully removed'
+            echom $'{slugdir} removed successfully'
         },
         null_function,
         Filter)
