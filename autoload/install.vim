@@ -35,6 +35,7 @@ def Extract(outdir: string): bool
             return false
         endif
     endfor
+    $'{tmpdir}/db.json'->filereadable() && $'{tmpdir}/db.json'->delete()
     if outdir->isdirectory() && outdir->delete('rf') != 0
         :echohl ErrorMsg | echoerr $'Failed to remove {outdir}' | echohl None
         return false
@@ -76,13 +77,16 @@ def FetchSlug(entry: dict<any>)
         (msg: string) => {
             if !aborted && $'{tmpdir}/index.json'->filereadable() && $'{tmpdir}/db.json'->filereadable()
                 notif.Update(Text('Extracting archive ...'))
-                # 100 MB json file takes 30s to extract
-                if Extract(outdir)
+                if [entry->json_encode()]->writefile($'{tmpdir}/slug.json') == -1
+                    :echohl ErrorMsg | echoerr $'Failed to write {tmpdir}/slug.json' | echohl None
+                    tmpdir->isdirectory() && tmpdir->delete('rf')
+                elseif Extract(outdir)
+                    # 100 MB json file takes 30s to extract
                     echom $'{entry.slug} installed successfully in {data_dir}'
                     notif.Update(Text('Success!'))
                     :sleep 500m
-                elseif tmpdir->isdirectory()
-                    tmpdir->delete('rf')
+                else
+                    tmpdir->isdirectory() && tmpdir->delete('rf')
                 endif
             endif
             notif.Close()
