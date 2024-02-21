@@ -2,52 +2,10 @@ vim9script
 
 import './popup.vim'
 import './task.vim'
+import './devdoc.vim'
 
 var data_dir = '~/.local/share/devdocs'
-# var devdocs_site_url = 'https://devdocs.io'
-# var devdocs_cdn_url = 'https://documents.devdocs.io'
-
-# var outdir = $'{data_dir}/{entry.slug}'->expand()->fnameescape()
-
-# def Extract(outdir: string): bool
-#     var tmpdir = $'{outdir}.tmp'
-#     if !$'{tmpdir}/index.json'->filereadable() || !$'{tmpdir}/db.json'->filereadable()
-#         :echohl ErrorMsg | echoerr 'Missing {index,db}.json' | echohl None
-#         return false
-#     endif
-#     var db: dict<any>
-#     try
-#         # 100 MB json file takes ~900 ms to read and decode
-#         db = $'{tmpdir}/db.json'->readfile()->join()->json_decode()
-#     catch
-#         :echohl ErrorMsg | echoerr $'Failed to read devdocs db.json ({v:exception})' | echohl None
-#         return false
-#     endtry
-#     for [fname, content] in db->items()
-#         var dir = $'{tmpdir}/{fname->fnamemodify(":h")}'
-#         if !dir->isdirectory() && !mkdir(dir, 'p')
-#             :echohl ErrorMsg | echoerr $'Failed to create {dir}' | echohl None
-#             return false
-#         endif
-#         var filename = $'{tmpdir}/{fname}.html'
-#         # splitting along \n is necessary to avoid NUL char in file
-#         # https://superuser.com/questions/935574/get-rid-of-null-character-in-vim-variable
-#         if content->trim()->split('\n')->writefile(filename) == -1
-#             :echohl ErrorMsg | echoerr $'Failed to write {filename}' | echohl None
-#             return false
-#         endif
-#     endfor
-#     if outdir->isdirectory() && outdir->delete('rf') != 0
-#         :echohl ErrorMsg | echoerr $'Failed to remove {outdir}' | echohl None
-#         return false
-#     endif
-#     $'mv {tmpdir} {outdir}'->system()
-#     if v:shell_error != 0
-#         :echohl ErrorMsg | echoerr $'Failed to rename {outdir}' | echohl None
-#         return false
-#     endif
-#     return true
-# enddef
+var pandoc = 'pandoc'
 
 def FetchDoc(entry: dict<any>)
     var fpath = entry.data.path
@@ -68,7 +26,7 @@ def FetchDoc(entry: dict<any>)
     endif
     var scriptdir = getscriptinfo({name: 'devdocs'})[0].name->fnamemodify(':h:h')
     task.AsyncCmd.new(
-        $'pandoc -t {scriptdir}/pandoc/writer.lua {fpath}',
+        $'{pandoc} -t {scriptdir}/pandoc/writer.lua {fpath}',
         (msg: string) => {
             var doc: dict<any>
             try
@@ -77,32 +35,9 @@ def FetchDoc(entry: dict<any>)
                 :echohl ErrorMsg | echoerr $'Pandoc failed ({v:exception})' | echohl None
                 return
             endtry
-            echom doc.doc
+            devdoc.LoadPage(doc)
         })
 enddef
-#     if entry.slug->empty() | return | endif
-#     var outdir = $'{data_dir}/{entry.slug}'->expand()->fnameescape()
-#     var tmpdir = $'{outdir}.tmp'
-#     if tmpdir->isdirectory() && tmpdir->delete('rf') != 0
-#         :echohl ErrorMsg | echoerr $'Failed to remove {tmpdir}' | echohl None
-#         return
-#     endif
-#     def Text(t: string): list<string>
-#         return [t, '', 'This may take up to a minute', '', '<Esc> to dismiss window', '<C-c> to abort job']
-#     enddef
-#     var atask: task.AsyncCmd
-#     var notif: popup.NotificationPopup
-#     var aborted = false
-#     notif = popup.NotificationPopup.new(Text($'Downloading {entry.db_size} bytes ...'),
-#         () => {
-#             # <C-c> was pressed.
-#             if atask->type() == v:t_object
-#                 atask.Stop()
-#             endif
-#             aborted = true
-#             tmpdir->isdirectory() && tmpdir->delete('rf')
-#         })
-# enddef
 
 def ShowMenu(items: list<dict<any>>)
     def Filter(lst: list<dict<any>>, prompt: string): list<any>

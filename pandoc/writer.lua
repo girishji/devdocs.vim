@@ -1,6 +1,4 @@
--- custom pandoc writer to convert AST to devdoc file
--- examples: https://github.com/jgm/djot.lua/blob/main/djot-writer.lua
---  and pandoc/pandoc-lua-engine/test/sample.lua
+-- custom pandoc writer to convert AST to Vim help like format
 
 Writer = pandoc.scaffolding.Writer
 
@@ -35,7 +33,7 @@ end
 
 local function set_columns(opts)
     if opts.columns == pandoc.WriterOptions({}).columns then
-        -- column option not set through command line
+        -- 'columns' is not set in command line
         opts.columns = TEXT_WIDTH
         if not use_terminal_width then
             return
@@ -93,175 +91,223 @@ local function is_tight_list(el)
     return true
 end
 
--- local function has_attributes(el)
---     return el.attr and
---     (#el.attr.identifier > 0 or #el.attr.classes > 0 or #el.attr.attributes > 0)
--- end
+-- remove marker chars and obtain marked positions through DFS
+-- 'init' is the index of char just previous to start of line
+local function scrub(line, lnum, init)
+    local function pattern(ch)
+        return ch .. '([^' .. ch .. ']+)' .. ch
+    end
+    local function first_match(start)
+        local fbegin, fend, fcapture, ftype = #line + 1
+        for mtype, ch in pairs(marker) do
+            local s, e, capture = line:find(pattern(ch), start)
+            if s and s < fbegin then
+                fbegin, fend, fcapture, ftype = s, e, capture, mtype
+            end
+        end
+        if fbegin > #line then
+            return nil
+        end
+        return fbegin, fend, fcapture, ftype
+    end
+    local mitems, slist, unseen = {}, {}, 1
+    for k in pairs(marker) do
+        mitems[k] = {}
+    end
+    local function slistlen()
+        local sll = 0
+        for _, s in ipairs(slist) do
+            sll = sll + s:len()
+        end
+        return sll
+    end
+    local s, e, capture, mtype = first_match(unseen)
+    -- s points to first byte of left marker (2 bytes) and e points to second byte of right marker
+    while s do
+        -- local slistlen = string.len(table.concat(slist))
+        if s > unseen then
+            table.insert(slist, line:sub(unseen, s - 1))
+        end
+        local markerlen = string.len(marker[mtype])
+        local scrubbed, items = scrub(line:sub(s + markerlen, e - markerlen), lnum, s - 1) -- marker is 2 bytes
+        table.insert(mitems[mtype], {lnum, init + slistlen() + 1, init + slistlen() + #scrubbed, scrubbed})
+        table.insert(slist, scrubbed)
+        if items then
+            for mtype in pairs(marker) do
+                local from, to = items[mtype], mitems[mtype]
+                table.move(from, 1, #from, #to + 1, to)
+            end
+        end
+        unseen = e + 1
+        s, e, capture, mtype = first_match(unseen)
+    end
+    if unseen <= #line then
+        table.insert(slist, line:sub(unseen))
+    end
+    return table.concat(slist), mitems
 
--- -- for debugging purpose only
--- local function render_attributes(el, isblock, opts)
---     if not has_attributes(el) then
---         return empty
---     end
---     local attr = el.attr
---     local buff = {"{"}
---     if #attr.identifier > 0 then
---         buff[#buff + 1] = "#" .. attr.identifier
---     end
---     for i=1,#attr.classes do
---         if #buff > 1 then
---             buff[#buff + 1] = space
---         end
---         buff[#buff + 1] = "." .. attr.classes[i]
---     end
---     for k,v in pairs(attr.attributes) do
---         if #buff > 1 then
---             buff[#buff + 1] = space
---         end
---         buff[#buff + 1] = k .. '="' .. v:gsub('"', '\\"') .. '"'
---     end
---     buff[#buff + 1] = "}"
---     if isblock then
---         return rblock(nowrap(concat(buff)), opts.columns)
---     else
---         return concat(buff)
---     end
--- end
 
--- local function blocks(bs, opts, sep)
---     if emptylines_around_codeblock then
---         return Writer.Blocks(bs)
---     end
---     -- remove empty lines above and below CodeBlock
---     --   Writer.Blocks() automatically inserts blankline between blocks
---     local docs = {}
---     local blocks = {}
---     for i, block in ipairs(bs) do
---         if block.tag == 'CodeBlock' or (block.tag == 'BlockQuote' and
---             #block.content > 0 and block.content[1].tag == 'CodeBlock') then
---             if blocks then
---                 table.insert(docs, Writer.Blocks(blocks))
---                 blocks = {}
---             end
---             if block.tag == 'CodeBlock' then
---                 table.insert(docs, concat{cr, Writer.Block.CodeBlock(block, opts), cr})
---             else
---                 table.insert(docs, concat{cr, Writer.Block.BlockQuote(block, opts), cr})
---             end
---         else
---             table.insert(blocks, block)
---         end
---     end
---     if blocks then
---         table.insert(docs, Writer.Blocks(blocks))
---     end
---     return concat(docs)
--- end
 
--- local function json_encode(val)
---     local escape_char_map = {
---         [ "\\" ] = "\\",
---         [ "\"" ] = "\"",
---         [ "\b" ] = "b",
---         [ "\f" ] = "f",
---         [ "\n" ] = "n",
---         [ "\r" ] = "r",
---         [ "\t" ] = "t",
---     }
---     local escape_char_map_inv = { [ "/" ] = "/" }
---     for k, v in pairs(escape_char_map) do
---         escape_char_map_inv[v] = k
+--         while s and e do
+--             table.insert(container, {lnum, s, e})  -- s, e are idx of marker chars
+--             table.insert(marker_pos, s)
+--     -- utf-8 encoding of extended ascii char (256-512) takes 2 bytes (hexdump -C)
+--     local extended_ascii = true
+--     local found = {}
+--     for k in pairs(marker) do
+--         found[k] = false
 --     end
---     local function escape_char(c)
---         return "\\" .. (escape_char_map[c] or string.format("u%04x", c:byte()))
---     end
---     local function encode_string(val)
---         return '"' .. val:gsub('[%z\1-\31\\"]', escape_char) .. '"'
---     end
---     local function encode_number(val)
---         -- Check for NaN, -inf and inf
---         if val ~= val or val <= -math.huge or val >= math.huge then
---             error("unexpected number value '" .. tostring(val) .. "'")
---         end
---         return string.format("%.14g", val)
---     end
---     local function encode_nil(val)
---         return "null"
---     end
---     local function encode_table(val)
---         local res = {}
---         if rawget(val, 1) ~= nil or next(val) == nil then
---             -- Treat as array
---             for i, v in ipairs(val) do
---                 table.insert(res, encode(v))
+--     local marker_pos = {}
+--     for mtype, ch in pairs(marker) do
+--         local container = mitems[mtype]
+--         local pat = pattern(ch)
+--         local s, e, capture = line:find(pat)
+--         while s and e do
+--             table.insert(container, {lnum, s, e})  -- s, e are idx of marker chars
+--             table.insert(marker_pos, s)
+--             table.insert(marker_pos, e)
+--             s, e, capture = line:find(pat, e + 1)
+--             if not found[mtype] then
+--                 found[mtype] = true
 --             end
---             return "[" .. table.concat(res, ",") .. "]"
---         else
---             -- Treat as an object
---             for k, v in pairs(val) do
---                 if type(k) ~= "string" then
---                     error("invalid table: mixed or invalid key types")
---                 end
---                 table.insert(res, encode(k) .. ":" .. encode(v))
---             end
---             return "{" .. table.concat(res, ",") .. "}"
 --         end
 --     end
---     local type_func_map = {
---         [ "nil"     ] = encode_nil,
---         [ "table"   ] = encode_table,
---         [ "string"  ] = encode_string,
---         [ "number"  ] = encode_number,
---         [ "boolean" ] = tostring,
---     }
---     encode = function(val)
---         local t = type(val)
---         local f = type_func_map[t]
---         if f then
---             return f(val)
---         end
---         error("unexpected type '" .. t .. "'")
+--     -- print(table.unpack(marker_pos))
+--     -- recalculate marked text position after removing marker chars
+--     -- local cut = 0
+--     -- table.insert(marker_pos, #line + 1)
+--     table.sort(marker_pos)
+--     local compress = {}
+--     -- print(line)
+--     local cwidth = extended_ascii and 2 or 1
+--     for i, m in ipairs(marker_pos) do
+--         -- print(lnum, i, m)
+--         compress[m] = (i - 1) * cwidth
 --     end
---     return ( encode(val) )
--- end
+--     -- print('---')
+--     -- for mtype in pairs(marker) do
+--     --     for _, item in ipairs(mitems[mtype]) do
+--     --         print(item[2], item[3])
+--     --     end
+--     -- end
+--     -- print('---')
+--     for mtype in pairs(marker) do
+--         for _, item in ipairs(mitems[mtype]) do
+--             -- print(item[2], item[3])
+--             item[2] = item[2] - compress[item[2]]
+--             item[3] = item[3] - compress[item[3]] - cwidth
+--         end
+--     end
+
+--     -- for idx = 1, (#marker_pos - 1) do
+--     --     -- cut = cut + (extended_ascii and 2 or 1)
+--     --     for mtype in pairs(marker) do
+--     --         for _, item in ipairs(mitems[mtype]) do
+--     --             if item[2] > marker_pos[idx] then
+--     --                 item[2] = item[2] - (extended_ascii and 2 or 1)
+--     --             end
+--     --             if item[3] > marker_pos[idx] then
+--     --                 item[3] = item[3] - (extended_ascii and 2 or 1)
+--     --             end
+--     --             -- if item[2] > marker_pos[idx] and item[2] < marker_pos[idx + 1] then
+--     --             --     item[2] = item[2] - cut
+--     --             -- end
+--     --             -- if item[3] > marker_pos[idx] and item[3] < marker_pos[idx + 1] then
+--     --             --     item[3] = item[3] - cut
+--     --             -- end
+--     --         end
+--     --     end
+--     -- end
+
+--     -- remove non-ascii markers
+--     for mtype, ch in pairs(marker) do
+--         if found[mtype] then
+--             line = line:gsub(pattern(ch), function(cap) return cap end)
+--         end
+--     end
+--     return {line = line, items = mitems}
+
+--     -- if #captures > 0 then
+--     --     cleaned = line:gsub(pat, function(cap) return cap end)
+--     -- end
+--     -- local cleaned = {}
+--     -- local function is_marker(lch)
+--     --     for _, ch in pairs(marker) do
+--     --         if ch == lch then
+--     --             return true
+--     --         end
+--     --     end
+--     --     return false
+--     -- end
+--     -- local cut = 0
+--     -- for i = 1, #line do
+--     --     if is_marker(line[i]) then
+--     --         cut = cut + (extended_ascii and 2 or 1)
+--     --     else
+--     --         if cut > 0 then
+--     --             for mtype, ch in pairs(marker) do
+--     --                 for _, item in mitems[mtype] do
+--     --                     if item[2] == i then
+--     --                         item[2] = item[2] - cut
+--     --                         break
+--     --                     elseif item[3] == i then
+--     --                         item[3] = item[3] - cut
+--     --                         break
+--     --                     end
+--     --                 end
+--     --             end
+--     --         end
+--     --         -- table.insert(cleaned, line[i])
+--     --         cleaned[#cleaned + 1] = line[i]
+--     --     end
+--     -- end
+--     -- -- print(table.concat(cleaned))
+--     -- return table.concat(cleaned)
+--     -- return line
+
+--     -- local cleaned = line
+--     -- if #captures > 0 then
+--     --     cleaned = line:gsub(pat, function(cap) return cap end)
+--     -- end
+--     -- return {elems = captures, line = cleaned}
+--     -- for mtype, ch in pairs(marker) do
+--     --     local res = desurround(line, ch, true)
+--     --     local container = mitems[mtype]
+--     --     table.move(res.elems, 1, #(res.elems), #container + 1, container)
+--     --     line = res.line
+--     -- end
+end
 
 local function demarkup(doc)
-    local function desurround(line, ch, extended_ascii)
-        local captures = {}
-        local pat = ch .. '([^' .. ch .. ']+)' .. ch
-        local s, e, capture = line:find(pat)
-        while s do
-            -- utf-8 encoding of extended ascii char (256-512) takes 2 bytes (hexdump -C)
-            table.insert(captures, {capture, lnum, s, e - (extended_ascii and 4 or 2)})
-            s, e, capture = line:find(pat, e + 1)
-        end
-        local cleaned = line
-        if #captures > 0 then
-            cleaned = line:gsub(pat, function(cap) return cap end)
-        end
-        return {elems = captures, line = cleaned}
-    end
+    local lnum = 1
     local res = {}
     local formatted = {}
     local error = {}
-    local lnum = 1
     local startl = 1
     local endl = doc:find('\n', 1, true)
-    local tag, codeblock, defn = {}, {}, {}
+    local tag, codeblock, defn, blockquote = {}, {}, {}, {}
     local h = {{}, {}, {}, {}, {}, {}}
     local mitems = {}
     for k in pairs(marker) do
         mitems[k] = {}
     end
-    local startpre = -1
+    local startcb = -1
+    local startbq = -1
     while endl do
         local line = doc:sub(startl, endl - 1)  -- remove \n from the end
-        if line:find('%s*>$') then
-            startpre = lnum
-        elseif startpre ~= -1 and line:find('%s*<$') then
-            table.insert(codeblock, {startpre, lnum})
-            startpre = -1
+        -- tagged regions
+        if line:find('%s*>>$') then
+            startbq = lnum
+        elseif startbq ~= -1 and line:find('%s*<<$') then
+            table.insert(blockquote, {startbq, lnum})
+            startbq = -1
+        elseif line:find('%s*>$') then
+            startcb = lnum
+        elseif startcb ~= -1 and line:find('%s*<$') then
+            table.insert(codeblock, {startcb, lnum})
+            startcb = -1
         else
+            -- tagged lines
             local st, en, capture = line:find('%s*::: ([^ ]+)')
             if st then
                 table.insert(tag, {capture, lnum})
@@ -277,13 +323,13 @@ local function demarkup(doc)
                         end
                     end
                 end
-                for mtype, ch in pairs(marker) do
-                    local res = desurround(line, ch, true)
-                    local container = mitems[mtype]
-                    table.move(res.elems, 1, #(res.elems), #container + 1, container)
-                    line = res.line
+                -- tagged words
+                local scrubbed, items = scrub(line, lnum, 0)
+                for mtype in pairs(marker) do
+                    local from, to = items[mtype], mitems[mtype]
+                    table.move(from, 1, #from, #to + 1, to)
                 end
-                table.insert(formatted, line .. '\n')
+                table.insert(formatted, scrubbed .. '\n')
                 lnum = lnum + 1
             end
         end
@@ -309,9 +355,10 @@ local function demarkup(doc)
         end
         return items
     end
-    res.doc, res.error, res.tag, res.codeblock, res.defn, res.link, res.strong, res.emph,
-        res.code, res.underline, res.h1, res.h2, res.h3, res.h4, res.h5, res.h6 =
-        formatted, error, tag, codeblock, defn, link_add_target(),
+    res.doc, res.error, res.tag, res.codeblock, res.blockquote, res.defn,
+        res.link, res.strong, res.emph, res.code, res.underline,
+        res.h1, res.h2, res.h3, res.h4, res.h5, res.h6 =
+        formatted, error, tag, codeblock, blockquote, defn, link_add_target(),
         mitems.strong, mitems.emph, mitems.code, mitems.underline,
         h[1], h[2], h[3], h[4], h[5], h[6]
     return res
@@ -321,7 +368,6 @@ end
 Writer.Pandoc = function(doc, opts)
     set_columns(opts)
     local sectioned = pandoc.utils.make_sections(true, nil, doc.blocks)
-    -- local d = Writer.Blocks(sectioned, opts, blankline)
     local d = Writer.Blocks(sectioned)
     local notes = {}
     for i=1,#footnotes do
@@ -331,11 +377,6 @@ Writer.Pandoc = function(doc, opts)
     local formatted = concat{d, blankline, concat(notes, blankline)}
     -- Doc type returned by layout functions is just a string
     local doc = layout.render(formatted, opts.columns)
-    -- local formatted = concat{d, blankline, concat(notes, blankline), blankline, concat(hotlinks, cr)}
-    -- local hotlinks = { '>>>>>>>>>><<<<<<<<<<' }
-    -- for key, val in pairs(links) do
-    --     table.insert(hotlinks, concat{key, '\t', val})
-    -- end
     local payload = demarkup(doc)
     -- return concat{table.concat(payload.doc), cr}
     return pandoc.json.encode(payload)
@@ -345,8 +386,7 @@ Writer.Block.Header = function(el, opts)
     local result = {}
     if el.level < 5 then
         result = {}
-        -- for _, str in ipairs({ Writer.Inlines(el.content), space, '~' }) do
-        for _, str in ipairs({Writer.Inlines(el.content), space, string.rep('~', math.min(4, el.level))}) do
+        for _, str in ipairs({Writer.Inlines(el.content), space, string.rep('~', math.min(6, el.level))}) do
             table.insert(result, str)
         end
     else
@@ -552,7 +592,8 @@ do
 end
 
 Writer.Block.BlockQuote = function(el)
-    return Writer.Blocks(el.content)
+    -- return concat{'>>', cr, nest(Writer.Blocks(el.content), TEXT_INDENT), cr, '<<'}
+    return concat{'>>', cr, nest(Writer.Blocks(el.content), 2), cr, '<<'}
 end
 
 Writer.Block.HorizontalRule = function(el, opts)
@@ -658,3 +699,6 @@ Writer.Inline.Note = function(el)
     local num = #footnotes
     return literal(format("[^%d]", num))
 end
+
+-- examples: https://github.com/jgm/djot.lua/blob/main/djot-writer.lua
+--  and pandoc/pandoc-lua-engine/test/sample.lua
