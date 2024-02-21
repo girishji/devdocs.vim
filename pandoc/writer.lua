@@ -122,14 +122,13 @@ local function scrub(line, lnum, init)
         return sll
     end
     local s, e, capture, mtype = first_match(unseen)
-    -- s points to first byte of left marker (2 bytes) and e points to second byte of right marker
+    -- s points to first byte of left marker (2-3 bytes utf-8) and e points to last byte of right marker
     while s do
-        -- local slistlen = string.len(table.concat(slist))
         if s > unseen then
             table.insert(slist, line:sub(unseen, s - 1))
         end
         local markerlen = string.len(marker[mtype])
-        local scrubbed, items = scrub(line:sub(s + markerlen, e - markerlen), lnum, s - 1) -- marker is 2 bytes
+        local scrubbed, items = scrub(line:sub(s + markerlen, e - markerlen), lnum, s - 1)
         table.insert(mitems[mtype], {lnum, init + slistlen() + 1, init + slistlen() + #scrubbed, scrubbed})
         table.insert(slist, scrubbed)
         if items then
@@ -145,142 +144,10 @@ local function scrub(line, lnum, init)
         table.insert(slist, line:sub(unseen))
     end
     return table.concat(slist), mitems
-
-
-
---         while s and e do
---             table.insert(container, {lnum, s, e})  -- s, e are idx of marker chars
---             table.insert(marker_pos, s)
---     -- utf-8 encoding of extended ascii char (256-512) takes 2 bytes (hexdump -C)
---     local extended_ascii = true
---     local found = {}
---     for k in pairs(marker) do
---         found[k] = false
---     end
---     local marker_pos = {}
---     for mtype, ch in pairs(marker) do
---         local container = mitems[mtype]
---         local pat = pattern(ch)
---         local s, e, capture = line:find(pat)
---         while s and e do
---             table.insert(container, {lnum, s, e})  -- s, e are idx of marker chars
---             table.insert(marker_pos, s)
---             table.insert(marker_pos, e)
---             s, e, capture = line:find(pat, e + 1)
---             if not found[mtype] then
---                 found[mtype] = true
---             end
---         end
---     end
---     -- print(table.unpack(marker_pos))
---     -- recalculate marked text position after removing marker chars
---     -- local cut = 0
---     -- table.insert(marker_pos, #line + 1)
---     table.sort(marker_pos)
---     local compress = {}
---     -- print(line)
---     local cwidth = extended_ascii and 2 or 1
---     for i, m in ipairs(marker_pos) do
---         -- print(lnum, i, m)
---         compress[m] = (i - 1) * cwidth
---     end
---     -- print('---')
---     -- for mtype in pairs(marker) do
---     --     for _, item in ipairs(mitems[mtype]) do
---     --         print(item[2], item[3])
---     --     end
---     -- end
---     -- print('---')
---     for mtype in pairs(marker) do
---         for _, item in ipairs(mitems[mtype]) do
---             -- print(item[2], item[3])
---             item[2] = item[2] - compress[item[2]]
---             item[3] = item[3] - compress[item[3]] - cwidth
---         end
---     end
-
---     -- for idx = 1, (#marker_pos - 1) do
---     --     -- cut = cut + (extended_ascii and 2 or 1)
---     --     for mtype in pairs(marker) do
---     --         for _, item in ipairs(mitems[mtype]) do
---     --             if item[2] > marker_pos[idx] then
---     --                 item[2] = item[2] - (extended_ascii and 2 or 1)
---     --             end
---     --             if item[3] > marker_pos[idx] then
---     --                 item[3] = item[3] - (extended_ascii and 2 or 1)
---     --             end
---     --             -- if item[2] > marker_pos[idx] and item[2] < marker_pos[idx + 1] then
---     --             --     item[2] = item[2] - cut
---     --             -- end
---     --             -- if item[3] > marker_pos[idx] and item[3] < marker_pos[idx + 1] then
---     --             --     item[3] = item[3] - cut
---     --             -- end
---     --         end
---     --     end
---     -- end
-
---     -- remove non-ascii markers
---     for mtype, ch in pairs(marker) do
---         if found[mtype] then
---             line = line:gsub(pattern(ch), function(cap) return cap end)
---         end
---     end
---     return {line = line, items = mitems}
-
---     -- if #captures > 0 then
---     --     cleaned = line:gsub(pat, function(cap) return cap end)
---     -- end
---     -- local cleaned = {}
---     -- local function is_marker(lch)
---     --     for _, ch in pairs(marker) do
---     --         if ch == lch then
---     --             return true
---     --         end
---     --     end
---     --     return false
---     -- end
---     -- local cut = 0
---     -- for i = 1, #line do
---     --     if is_marker(line[i]) then
---     --         cut = cut + (extended_ascii and 2 or 1)
---     --     else
---     --         if cut > 0 then
---     --             for mtype, ch in pairs(marker) do
---     --                 for _, item in mitems[mtype] do
---     --                     if item[2] == i then
---     --                         item[2] = item[2] - cut
---     --                         break
---     --                     elseif item[3] == i then
---     --                         item[3] = item[3] - cut
---     --                         break
---     --                     end
---     --                 end
---     --             end
---     --         end
---     --         -- table.insert(cleaned, line[i])
---     --         cleaned[#cleaned + 1] = line[i]
---     --     end
---     -- end
---     -- -- print(table.concat(cleaned))
---     -- return table.concat(cleaned)
---     -- return line
-
---     -- local cleaned = line
---     -- if #captures > 0 then
---     --     cleaned = line:gsub(pat, function(cap) return cap end)
---     -- end
---     -- return {elems = captures, line = cleaned}
---     -- for mtype, ch in pairs(marker) do
---     --     local res = desurround(line, ch, true)
---     --     local container = mitems[mtype]
---     --     table.move(res.elems, 1, #(res.elems), #container + 1, container)
---     --     line = res.line
---     -- end
 end
 
 local function demarkup(doc)
     local lnum = 1
-    local res = {}
     local formatted = {}
     local error = {}
     local startl = 1
@@ -355,6 +222,7 @@ local function demarkup(doc)
         end
         return items
     end
+    local res = {}
     res.doc, res.error, res.tag, res.codeblock, res.blockquote, res.defn,
         res.link, res.strong, res.emph, res.code, res.underline,
         res.h1, res.h2, res.h3, res.h4, res.h5, res.h6 =
@@ -363,7 +231,6 @@ local function demarkup(doc)
         h[1], h[2], h[3], h[4], h[5], h[6]
     return res
 end
-
 
 Writer.Pandoc = function(doc, opts)
     set_columns(opts)
