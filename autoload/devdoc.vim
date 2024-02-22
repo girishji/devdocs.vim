@@ -104,22 +104,56 @@ var tag_stack = []
 #   return 1
 # endfunc
 
+var properties = {
+    DevdocCodeblock: 'Comment',
+    DevdocBlockquote: 'Identifier',
+    DevdocDefn: 'Statement',
+    DevdocLink: 'Underlined',
+    DevdocStrong: 'Special',
+    DevdocEmph: 'Preproc',
+    DevdocCode: 'CursorLine',
+    DevdocUnderline: 'Underlined',
+    DevdocH1: 'Statement',
+    DevdocH2: 'Statement',
+    DevdocH3: 'Statement',
+    DevdocH4: 'Statement',
+    DevdocH5: 'Statement',
+    DevdocH6: 'Statement',
+    # DevdocLinkStrong: Underlined,
+    # DevdocLinkEmph: Underlined,
+    # DevdocLinkCode: Underlined,
+    # DevdocLinkUnderline: Underlined,
+}
+
 def TextProps(doc: dict<any>)
-    if empty(prop_type_get('DevdocCode'))
-        highlight default link DevdocCode CursorLine
-        'DevdocCode'->prop_type_add({highlight: "DevdocCode", override: true, priority: 1000, combine: true})
-    endif
-    if empty(prop_type_get('DevdocEmph'))
-        highlight default link DevdocEmph CursorLine
-        'DevdocEmph'->prop_type_add({highlight: "DevdocEmph", override: true, priority: 1000, combine: true})
-    endif
-    if empty(prop_type_get('DevdocStrong'))
-        highlight default link DevdocStrong CursorLine
-        'DevdocStrong'->prop_type_add({highlight: "DevdocStrong", override: true, priority: 1000, combine: true})
-    endif
-    {type: 'DevdocCode'}->prop_add_list((doc.code)->mapnew((_, v) => [v[0], v[1], v[0], v[2] + 1]))
-    {type: 'DevdocEmph'}->prop_add_list((doc.emph)->mapnew((_, v) => [v[0], v[1], v[0], v[2] + 1]))
-    {type: 'DevdocStrong'}->prop_add_list((doc.strong)->mapnew((_, v) => [v[0], v[1], v[0], v[2] + 1]))
+    for [typ, lnk] in properties->items()
+        if empty(prop_type_get(typ))
+            exe $'highlight default link {typ} {lnk}'
+            typ->prop_type_add({highlight: typ, override: true, priority: 1000, combine: true})
+        endif
+    endfor
+    for tag in ['code', 'emph', 'strong', 'underline']
+        var group = $'Devdoc{tag[0]->toupper()}{tag[1 : ]}'
+        if doc[tag]->type() != v:t_dict  # lua empty list becomes empty dict in json
+            {type: group}->prop_add_list((doc[tag])->mapnew((_, v) => [v[0], v[1], v[0], v[2] + 1]))
+        endif
+    endfor
+    for tag in ['defn', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+        var group = $'Devdoc{tag[0]->toupper()}{tag[1 : ]}'
+        if doc[tag]->type() != v:t_dict
+            {type: group}->prop_add_list((doc[tag])->mapnew((_, v) => [v, 1, v, 1000]))
+        endif
+    endfor
+    for tag in ['blockquote', 'codeblock']
+        var group = $'Devdoc{tag[0]->toupper()}{tag[1 : ]}'
+        if doc[tag]->type() != v:t_dict
+            {type: group}->prop_add_list((doc[tag])->mapnew((_, v) => [v[0], 1, v[1], 1000]))
+        endif
+    endfor
+    # {type: 'DevdocCode'}->prop_add_list((doc.code)->mapnew((_, v) => [v[0], v[1], v[0], v[2] + 1]))
+    # {type: 'DevdocEmph'}->prop_add_list((doc.emph)->mapnew((_, v) => [v[0], v[1], v[0], v[2] + 1]))
+    # {type: 'DevdocStrong'}->prop_add_list((doc.strong)->mapnew((_, v) => [v[0], v[1], v[0], v[2] + 1]))
+    # {type: 'DevdocLink'}->prop_add_list((doc.strong)->mapnew((_, v) => [v[0], v[1], v[0], v[2] + 1]))
 enddef
 
 def ParseLinkToFileLine(): dict<any>

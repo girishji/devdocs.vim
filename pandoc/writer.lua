@@ -19,6 +19,8 @@ local emptylines_around_codeblock = false
 local use_terminal_width = true
 -- only for unicode font sets, not for 'fixedsys' font.
 local extended_ascii = true
+local indent_section = false
+local divide_section = true
 local sepchars = extended_ascii and { '═', '—' } or { '=', '-' }
 local doublequote = extended_ascii and { '"', '"'} or {'"', '"'}
 local singlequote = extended_ascii and { "'", "'"} or {"'", "'"}
@@ -54,6 +56,7 @@ local function set_columns(opts)
         end
     end
 end
+
 local format_number = {}
 format_number.Decimal = function(n)
     return format("%d", n)
@@ -242,6 +245,10 @@ Writer.Pandoc = function(doc, opts)
         table.insert(notes, note)
     end
     local formatted = concat{d, blankline, concat(notes, blankline)}
+    if not indent_section then
+        -- indent the whole document
+        formatted = nest(formatted, 2)
+    end
     -- Doc type returned by layout functions is just a string
     local doc = layout.render(formatted, opts.columns)
     local payload = demarkup(doc)
@@ -269,17 +276,23 @@ Writer.Block.Div = function(el, opts)
         if el.attr and el.attr.attributes and el.attr.attributes.number then
             local section = el.attr.attributes.number
             local fragments = string_split(section, '[^.]+')
-            -- apply one unit of indent per heading level (even if levels may or may not be nested)
-            local indent = (#fragments > 1 and #fragments < 4) and TEXT_INDENT or 0
-            local sec = extended_ascii and ('§' .. section) or ('[' .. section .. ']')
-            if #fragments < 4 then
-                local schar = #fragments == 1 and sepchars[1] or sepchars[2]
-                local slen = opts.columns - indent - 1 - string.len(sec)
-                sec = nowrap(concat{string.rep(schar, slen), space, sec})
-            else
-                sec = nowrap(sec)
+            local indent = 0
+            if indent_section then
+                -- apply one unit of indent per heading level (even if levels may or may not be nested)
+                indent = (#fragments > 1 and #fragments < 4) and TEXT_INDENT or 0
             end
-            local fragments = string_split(section, '[^.]+')
+            local sec = ''
+            if divide_section then
+                sec = extended_ascii and ('§' .. section) or ('[' .. section .. ']')
+                if #fragments < 4 then
+                    -- horizontal line above section header
+                    local schar = #fragments == 1 and sepchars[1] or sepchars[2]
+                    local slen = opts.columns - indent - 1 - string.len(sec)
+                    sec = nowrap(concat{string.rep(schar, slen), space, sec})
+                else
+                    sec = nowrap(sec)
+                end
+            end
             if #fragments > 1 then
                 return nest(concat{sec, cr, doc}, indent)
             else
@@ -460,7 +473,7 @@ end
 
 Writer.Block.BlockQuote = function(el)
     -- return concat{'>>', cr, nest(Writer.Blocks(el.content), TEXT_INDENT), cr, '<<'}
-    return concat{'>>', cr, nest(Writer.Blocks(el.content), 2), cr, '<<'}
+    return concat{'>>', cr, Writer.Blocks(el.content), cr, '<<'}
 end
 
 Writer.Block.HorizontalRule = function(el, opts)
