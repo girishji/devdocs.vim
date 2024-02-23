@@ -94,43 +94,9 @@ local function is_tight_list(el)
     return true
 end
 
--- local markercode
-
 -- remove marker chars and obtain marked positions through DFS
 -- 'init' is the index of char just previous to start of line
 local function scrub(line, lnum, init)
-    -- if not markercode then
-    --     for _, ch in pairs(marker) do
-    --         local _, code = utf.codes(ch)
-    --         table.insert(markercode, code)
-    --     end
-    -- end
-    -- local function first_match(lstart)
-    --     -- since extended_ascii chars are used for markup, pattern matching is
-    --     -- unpredictable ('¦·Pat·¦':find('¦([^¦]+)¦') returns nil). string
-    --     -- operations in lua operate at byte level (don't understand multibyte
-    --     -- chars). so compare utf-8 codes directly.
-    --     -- local found, setstart, s, e, capture = false, false
-    --     local mrkr, s, capture = nil, nil, {}
-    --     for pos, code in utf8.codes(line) do
-    --         if pos >= lstart then
-    --             if not mrkr then
-    --                 for _, mrkrcode in ipairs(markercode) do
-    --                     if mrkrcode == code then
-    --                         mrkr, s = code, pos
-    --                         break
-    --                     end
-    --                 end
-    --             else
-    --                 if code == mrkr then
-    --                     return s, pos - 1, table.concat(capture), mrkr
-    --                 end
-    --                 table.insert(capture, code)
-    --             end
-    --         end
-    --     end
-    --     return nil
-
     local function pattern(ch)
         return ch .. '(.-)' .. ch
     end
@@ -151,15 +117,9 @@ local function scrub(line, lnum, init)
     for k in pairs(marker) do
         mitems[k] = {}
     end
-    -- local function slistlen()
-    --     local sll = 0
-    --     for _, s in ipairs(slist) do
-    --         sll = sll + s:len()
-    --     end
-    --     return sll
-    -- end
     local s, e, capture, mtype = first_match(start)
     -- s points to first byte of left marker (2-3 bytes utf-8) and e points to last byte of right marker
+    -- (note: use utf8 functions directly if regex goes wonky)
     while s do
         local markerlen = string.len(marker[mtype])
         if s > start then
@@ -289,7 +249,6 @@ Writer.Pandoc = function(doc, opts)
     local doc = layout.render(formatted, opts.columns)
     -- print(doc)
     local payload = demarkup(doc)
-    -- print(concat{table.concat(payload.doc), cr})
     return pandoc.json.encode(payload)
 end
 
