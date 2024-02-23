@@ -94,11 +94,45 @@ local function is_tight_list(el)
     return true
 end
 
+-- local markercode
+
 -- remove marker chars and obtain marked positions through DFS
 -- 'init' is the index of char just previous to start of line
 local function scrub(line, lnum, init)
+    -- if not markercode then
+    --     for _, ch in pairs(marker) do
+    --         local _, code = utf.codes(ch)
+    --         table.insert(markercode, code)
+    --     end
+    -- end
+    -- local function first_match(lstart)
+    --     -- since extended_ascii chars are used for markup, pattern matching is
+    --     -- unpredictable ('¦·Pat·¦':find('¦([^¦]+)¦') returns nil). string
+    --     -- operations in lua operate at byte level (don't understand multibyte
+    --     -- chars). so compare utf-8 codes directly.
+    --     -- local found, setstart, s, e, capture = false, false
+    --     local mrkr, s, capture = nil, nil, {}
+    --     for pos, code in utf8.codes(line) do
+    --         if pos >= lstart then
+    --             if not mrkr then
+    --                 for _, mrkrcode in ipairs(markercode) do
+    --                     if mrkrcode == code then
+    --                         mrkr, s = code, pos
+    --                         break
+    --                     end
+    --                 end
+    --             else
+    --                 if code == mrkr then
+    --                     return s, pos - 1, table.concat(capture), mrkr
+    --                 end
+    --                 table.insert(capture, code)
+    --             end
+    --         end
+    --     end
+    --     return nil
+
     local function pattern(ch)
-        return ch .. '([^' .. ch .. ']+)' .. ch
+        return ch .. '(.-)' .. ch
     end
     local function first_match(start)
         local fbegin, fend, fcapture, ftype = #line + 1
@@ -113,47 +147,50 @@ local function scrub(line, lnum, init)
         end
         return fbegin, fend, fcapture, ftype
     end
-    local mitems, slist, unseen = {}, {}, 1
+    local mitems, scrublist, scrublen, start = {}, {}, 0, 1
     for k in pairs(marker) do
         mitems[k] = {}
     end
-    local function slistlen()
-        local sll = 0
-        for _, s in ipairs(slist) do
-            sll = sll + s:len()
-        end
-        return sll
-    end
-    local s, e, capture, mtype = first_match(unseen)
+    -- local function slistlen()
+    --     local sll = 0
+    --     for _, s in ipairs(slist) do
+    --         sll = sll + s:len()
+    --     end
+    --     return sll
+    -- end
+    local s, e, capture, mtype = first_match(start)
     -- s points to first byte of left marker (2-3 bytes utf-8) and e points to last byte of right marker
     while s do
-        if s > unseen then
-            table.insert(slist, line:sub(unseen, s - 1))
-        end
         local markerlen = string.len(marker[mtype])
-        local scrubbed, items = scrub(line:sub(s + markerlen, e - markerlen), lnum, s - 1)
-        table.insert(mitems[mtype], {lnum, init + slistlen() + 1, init + slistlen() + #scrubbed, scrubbed})
-        table.insert(slist, scrubbed)
+        if s > start then
+            local substr = line:sub(start, s - 1)
+            table.insert(scrublist, substr)
+            scrublen = scrublen + substr:len()
+        end
+        local scrubbed, items = scrub(line:sub(s + markerlen, e - markerlen), lnum, scrublen)
+        table.insert(mitems[mtype], {lnum, init + scrublen + 1, init + scrublen + scrubbed:len(), scrubbed})
+        table.insert(scrublist, scrubbed)
+        scrublen = scrublen + scrubbed:len()
         if items then
             for mtype in pairs(marker) do
                 local from, to = items[mtype], mitems[mtype]
                 table.move(from, 1, #from, #to + 1, to)
             end
         end
-        unseen = e + 1
-        s, e, capture, mtype = first_match(unseen)
+        start = e + 1
+        s, e, capture, mtype = first_match(start)
     end
-    if unseen <= #line then
-        table.insert(slist, line:sub(unseen))
+    if start <= #line then
+        local substr = line:sub(start)
+        table.insert(scrublist, substr)
+        scrublen = scrublen + substr:len()
     end
-    return table.concat(slist), mitems
+    return table.concat(scrublist), mitems
 end
 
 local function demarkup(doc)
-    local lnum = 1
-    local formatted = {}
-    local error = {}
-    local startl = 1
+    local formatted, error = {}, {}
+    local lnum, startl = 1, 1
     local endl = doc:find('\n', 1, true)
     local tag, codeblock, defn, blockquote = {}, {}, {}, {}
     local h = {{}, {}, {}, {}, {}, {}}
@@ -161,21 +198,20 @@ local function demarkup(doc)
     for k in pairs(marker) do
         mitems[k] = {}
     end
-    local startcb = -1
-    local startbq = -1
+    local startcb, startbq
     while endl do
         local line = doc:sub(startl, endl - 1)  -- remove \n from the end
         -- tagged regions
-        if line:find('%s*>>$') then
+        if not startbq and line:find('%s*%%$') then
             startbq = lnum
-        elseif startbq ~= -1 and line:find('%s*<<$') then
-            table.insert(blockquote, {startbq, lnum})
-            startbq = -1
-        elseif line:find('%s*>$') then
+        elseif startbq and line:find('%s*%%$') then
+            table.insert(blockquote, {startbq, lnum - 1})
+            startbq = nil
+        elseif not startcb and line:find('%s*>$') then
             startcb = lnum
-        elseif startcb ~= -1 and line:find('%s*<$') then
-            table.insert(codeblock, {startcb, lnum})
-            startcb = -1
+        elseif startcb and line:find('%s*<$') then
+            table.insert(codeblock, {startcb, lnum - 1})
+            startcb = nil
         else
             -- tagged lines
             local st, en, capture = line:find('%s*::: ([^ ]+)')
@@ -218,9 +254,9 @@ local function demarkup(doc)
         end
         local items = {}
         for _, lnk in ipairs(mitems.link) do
-            local tgt = target(lnk[1])
+            local tgt = target(lnk[4])
             if tgt then
-                table.insert(items, {lnk[1], tgt, lnk[2], lnk[3], lnk[4]})
+                table.insert(items, {lnk[4], tgt, lnk[1], lnk[2], lnk[3]})
             end
         end
         return items
@@ -251,8 +287,9 @@ Writer.Pandoc = function(doc, opts)
     end
     -- Doc type returned by layout functions is just a string
     local doc = layout.render(formatted, opts.columns)
+    -- print(doc)
     local payload = demarkup(doc)
-    -- return concat{table.concat(payload.doc), cr}
+    -- print(concat{table.concat(payload.doc), cr})
     return pandoc.json.encode(payload)
 end
 
@@ -473,7 +510,7 @@ end
 
 Writer.Block.BlockQuote = function(el)
     -- return concat{'>>', cr, nest(Writer.Blocks(el.content), TEXT_INDENT), cr, '<<'}
-    return concat{'>>', cr, Writer.Blocks(el.content), cr, '<<'}
+    return concat{'%', cr, Writer.Blocks(el.content), cr, '%'}
 end
 
 Writer.Block.HorizontalRule = function(el, opts)
@@ -553,9 +590,11 @@ end
 
 Writer.Inline.Link = function(el)
     if string.find(el.target, 'http') == nil then
+        -- remove markup within link
         local rendered = pandoc.utils.stringify(el.content)
         links[rendered] = el.target
-        local result = {marker.link, rendered, marker.link}
+        -- local result = {marker.link, rendered, marker.link}
+        local result = {marker.link, Writer.Inlines(el.content), marker.link}
         return nowrap(concat(result))
     end
     return Writer.Inlines(el.content)

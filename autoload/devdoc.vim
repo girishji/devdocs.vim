@@ -129,7 +129,8 @@ def TextProps(doc: dict<any>)
     for [typ, lnk] in properties->items()
         if empty(prop_type_get(typ))
             exe $'highlight default link {typ} {lnk}'
-            typ->prop_type_add({highlight: typ, override: true, priority: 1000, combine: true})
+            var priority = typ == 'DevdocLink' ? 1001 : 1000
+            typ->prop_type_add({highlight: typ, override: true, priority: priority, combine: true})
         endif
     endfor
     for tag in ['code', 'emph', 'strong', 'underline']
@@ -138,6 +139,9 @@ def TextProps(doc: dict<any>)
             {type: group}->prop_add_list((doc[tag])->mapnew((_, v) => [v[0], v[1], v[0], v[2] + 1]))
         endif
     endfor
+    if doc.link->type() != v:t_dict
+        {type: 'DevdocLink'}->prop_add_list((doc.link)->mapnew((_, v) => [v[2], v[3], v[2], v[4] + 1]))
+    endif
     for tag in ['defn', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
         var group = $'Devdoc{tag[0]->toupper()}{tag[1 : ]}'
         if doc[tag]->type() != v:t_dict
