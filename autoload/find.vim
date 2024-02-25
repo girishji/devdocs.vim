@@ -2,42 +2,10 @@ vim9script
 
 import './popup.vim'
 import './task.vim'
-import './devdoc.vim'
+import './options.vim'
+import autoload 'devdoc.vim'
 
-var data_dir = '~/.local/share/devdocs'
-var pandoc = 'pandoc'
-
-def FetchDoc(entry: dict<any>)
-    var fpath = entry.data.path
-    var idx = fpath->strridx('#')
-    var tag = ''
-    if idx != -1
-        tag = fpath->slice(idx + 1)
-        fpath = fpath->slice(0, idx)
-    endif
-    fpath = $'{data_dir}/{entry.slug}/{fpath}.html'->expand()->fnameescape()
-    if !fpath->filereadable()
-        :echohl ErrorMsg | echoerr $'Failed to read {fpath}' | echohl None
-        return
-    endif
-    if 'pandoc'->exepath() == ''
-        :echohl ErrorMsg | echoerr $'Failed to find pandoc' | echohl None
-        return
-    endif
-    var scriptdir = getscriptinfo({name: 'devdocs'})[0].name->fnamemodify(':h:h')
-    task.AsyncCmd.new(
-        $'{pandoc} -t {scriptdir}/pandoc/writer.lua {fpath}',
-        (msg: string) => {
-            var doc: dict<any>
-            try
-                doc = msg->json_decode()
-            catch
-                :echohl ErrorMsg | echoerr $'Pandoc failed ({v:exception})' | echohl None
-                return
-            endtry
-            devdoc.LoadPage(doc)
-        })
-enddef
+var data_dir = options.opt.data_dir
 
 def ShowMenu(items: list<dict<any>>)
     def Filter(lst: list<dict<any>>, prompt: string): list<any>
@@ -52,7 +20,7 @@ def ShowMenu(items: list<dict<any>>)
     popup.FilterMenuPopup.new('Devdocs',
         items,
         (res, key) => {
-            FetchDoc(res)
+            devdoc.LoadPage(res.data.path, res.slug)
         },
         (winid) => {
             win_execute(winid, "syn match FilterMenuAttributesSubtle ' ‹.*$'")

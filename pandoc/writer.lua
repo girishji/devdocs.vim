@@ -21,6 +21,7 @@ local use_terminal_width = true
 local extended_ascii = true
 local indent_section = false
 local divide_section = true
+local fence_codeblock = true
 local sepchars = extended_ascii and { '═', '—' } or { '=', '-' }
 local doublequote = extended_ascii and { '"', '"'} or {'"', '"'}
 local singlequote = extended_ascii and { "'", "'"} or {"'", "'"}
@@ -148,17 +149,18 @@ local function scrub(line, lnum, init)
     return table.concat(scrublist), mitems
 end
 
-local function demarkup(doc)
+local function resolve(doc)
     local formatted, error = {}, {}
     local lnum, startl = 1, 1
-    local endl = doc:find('\n', 1, true)
-    local tag, codeblock, defn, blockquote = {}, {}, {}, {}
+    local tag, codeblock, defn, blockquote, section = {}, {}, {}, {}, {}
     local h = {{}, {}, {}, {}, {}, {}}
     local mitems = {}
     for k in pairs(marker) do
         mitems[k] = {}
     end
     local startcb, startbq
+    local remove_next_line = false
+    local endl = doc:find('\n', 1, true)
     while endl do
         local line = doc:sub(startl, endl - 1)  -- remove \n from the end
         -- tagged regions
@@ -169,9 +171,22 @@ local function demarkup(doc)
             startbq = nil
         elseif not startcb and line:find('%s*>$') then
             startcb = lnum
+            if fence_codeblock then
+                if string.match(formatted[#formatted], '^%s*$') then
+                    table.remove(formatted) -- remove previous line
+                    lnum = lnum - 1
+                end
+                table.insert(formatted, line .. '\n')
+                lnum = lnum + 1
+            end
         elseif startcb and line:find('%s*<$') then
             table.insert(codeblock, {startcb, lnum - 1})
             startcb = nil
+            if fence_codeblock then
+                remove_next_line = true
+                table.insert(formatted, line .. '\n')
+                lnum = lnum + 1
+            end
         else
             -- tagged lines
             local st, en, capture = line:find('%s*::: ([^ ]+)')
@@ -188,6 +203,9 @@ local function demarkup(doc)
                             line = line:sub(1, #line - i - 1)
                         end
                     end
+                elseif line:find('^%s*' .. string.rep(sepchars[1], 10)) or
+                    line:find('^%s*' .. string.rep(sepchars[2], 10)) then
+                    table.insert(section, lnum)
                 end
                 -- tagged words
                 local scrubbed, items = scrub(line, lnum, 0)
@@ -195,8 +213,17 @@ local function demarkup(doc)
                     local from, to = items[mtype], mitems[mtype]
                     table.move(from, 1, #from, #to + 1, to)
                 end
-                table.insert(formatted, scrubbed .. '\n')
-                lnum = lnum + 1
+                -- include the line
+                if not remove_next_line then
+                    table.insert(formatted, scrubbed .. '\n')
+                    lnum = lnum + 1
+                else
+                    if not string.match(line, '^%s*$') then
+                        table.insert(formatted, scrubbed .. '\n')
+                        lnum = lnum + 1
+                    end
+                    remove_next_line = false
+                end
             end
         end
         startl = endl + 1
@@ -224,9 +251,9 @@ local function demarkup(doc)
     local res = {}
     res.doc, res.error, res.tag, res.codeblock, res.blockquote, res.defn,
         res.link, res.strong, res.emph, res.code, res.underline,
-        res.h1, res.h2, res.h3, res.h4, res.h5, res.h6 =
+        res.section, res.h1, res.h2, res.h3, res.h4, res.h5, res.h6 =
         formatted, error, tag, codeblock, blockquote, defn, link_add_target(),
-        mitems.strong, mitems.emph, mitems.code, mitems.underline,
+        mitems.strong, mitems.emph, mitems.code, mitems.underline, section,
         h[1], h[2], h[3], h[4], h[5], h[6]
     return res
 end
@@ -248,7 +275,7 @@ Writer.Pandoc = function(doc, opts)
     -- Doc type returned by layout functions is just a string
     local doc = layout.render(formatted, opts.columns)
     -- print(doc)
-    local payload = demarkup(doc)
+    local payload = resolve(doc)
     return pandoc.json.encode(payload)
 end
 
