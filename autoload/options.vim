@@ -5,6 +5,6 @@ export var opt = {
     pandoc: 'pandoc',
     height: 20,
     open_mode: 'split',
-    search_filetype_doc: true,
+    slugs: [],
 }
 

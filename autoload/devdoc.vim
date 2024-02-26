@@ -9,7 +9,7 @@ var data_dir = options.opt.data_dir
 var curpage: dict<any> = null_dict
 var path2bufnr: dict<any>
 
-def Page(target: string, slug: string): dict<any>
+def Page(target: string, slug: string, absolute_path: bool): dict<any>
     var [path, tag] = [null_string, null_string]
     var tagidx = target->strridx('#')
     if tagidx == 0
@@ -22,12 +22,16 @@ def Page(target: string, slug: string): dict<any>
     endif
     if path != null_string
         # could be absolute or relative path
-        var fullpath = $'{data_dir}/{slug}/{path}.html'->expand()->fnameescape()
+        # do not use fnameescape() as it escapes $localize.html in angular which fails
+        var fullpath = $'{data_dir->expand()}/{slug}/{path}.html'
         if fullpath->filereadable()
             return {path: path, slug: slug, tag: tag}
+        elseif absolute_path
+            :echohl ErrorMsg | echoerr $'Failed to locate {fullpath}' | echohl None
+            return null_dict
         endif
         var tail = $'{curpage.path->fnamemodify(":h")}/{path}'
-        fullpath = $'{data_dir}/{slug}/{tail}.html'->expand()->fnameescape()
+        fullpath = $'{data_dir->expand()}/{slug}/{tail}.html'
         if fullpath->filereadable()
             return {path: tail, slug: slug, tag: tag}
         endif
@@ -74,22 +78,28 @@ enddef
 
 def LoadLocation(page: dict<any>): bool
     var fpath = $'{page.slug}/{page.path}'
-    if path2bufnr->has_key(fpath)
-        var open_cmd = OpenWinCmd()
-        silent execute $":{open_cmd}"
-        execute $':{path2bufnr[fpath]}b'
-        curpage = page
+    if !path2bufnr->has_key(fpath)
+        return false
+    endif
+    if path2bufnr[fpath] == bufnr('%')
         return true
     endif
-    return false
+    var open_cmd = OpenWinCmd()
+    silent execute $":{open_cmd}"
+    execute $':{path2bufnr[fpath]}b'
+    :setl bufhidden=hide
+    :setl nobuflisted
+    :setl noma
+    curpage = page
+    return true
 enddef
 
-export def LoadPage(fpath: string, slug: string)
-    var page = Page(fpath, slug)
+export def LoadPage(fpath: string, slug: string, absolute_path: bool = false)
+    var page = Page(fpath, slug, absolute_path)
     if LoadLocation(page)
         return
     endif
-    var fullpath = $'{data_dir}/{slug}/{page.path}.html'->expand()->fnameescape()
+    var fullpath = $'{data_dir->expand()}/{slug}/{page.path}.html'
     if 'pandoc'->exepath() == null_string
         :echohl ErrorMsg | echoerr $'Failed to find pandoc' | echohl None
         return

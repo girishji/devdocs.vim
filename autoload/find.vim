@@ -20,7 +20,7 @@ def ShowMenu(items: list<dict<any>>)
     popup.FilterMenuPopup.new('Devdocs',
         items,
         (res, key) => {
-            devdoc.LoadPage(res.data.path, res.slug)
+            devdoc.LoadPage(res.data.path, res.slug, true)
         },
         (winid) => {
             win_execute(winid, "syn match FilterMenuAttributesSubtle ' ‹.*$'")
@@ -31,10 +31,15 @@ enddef
 
 def Slugs(): list<any>
     var dir = data_dir->expand()
-    var slugs = dir->readdir((v) => $'{dir}/{v}'->isdirectory() && v !~ '\.tmp$')
-    if slugs->empty()
-        :echohl WarningMsg | echom $'Devdocs not installed' | echohl None
-        return []
+    var slugs: list<string>
+    if !options.opt->has_key('slugs') || !options.opt.slugs->empty()
+        slugs = dir->readdir((v) => $'{dir}/{v}'->isdirectory() && v !~ '\.tmp$')
+        if slugs->empty()
+            :echohl WarningMsg | echom $'Devdocs not installed' | echohl None
+            return []
+        endif
+    else
+        slugs = options.opt.slugs
     endif
     var items = []
     for slug in slugs

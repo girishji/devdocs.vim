@@ -26,6 +26,7 @@ local fence_codeblock = true
 local sepchars = extended_ascii and { '═', '—' } or { '=', '-' }
 local doublequote = extended_ascii and { '"', '"'} or {'"', '"'}
 local singlequote = extended_ascii and { "'", "'"} or {"'", "'"}
+local nested_blockquote, nested_codeblock = false, false
 
 local function string_split(str, pat)
     local split = {}
@@ -173,7 +174,7 @@ local function scrub_markup(doc)
         elseif not startcb and line:find('%s*>%d*$') then
             startcb = lnum
             lang_in_codeblock = line:match('%s*>(%d+)$')
-            if fence_codeblock and lang_in_codeblock then
+            if fence_codeblock and lang_in_codeblock ~= nil then
                 if string.match(formatted[#formatted], '^%s*$') then
                     table.remove(formatted) -- remove previous line
                     lnum = lnum - 1
@@ -187,9 +188,8 @@ local function scrub_markup(doc)
             else
                 table.insert(codeblock, {startcb, lnum - 1})
             end
-            table.insert(codeblock, {startcb, lnum - 1})
             startcb = nil
-            if fence_codeblock and lang_in_codeblock then
+            if fence_codeblock and lang_in_codeblock ~= nil then
                 remove_next_line = true
                 table.insert(formatted, line .. '\n')
                 lnum = lnum + 1
@@ -300,7 +300,6 @@ Writer.Block.Header = function(el, opts)
 end
 
 Writer.Block.Div = function(el, opts)
-    -- local doc = Writer.Blocks(el.content, opts, blankline)
     local doc = Writer.Blocks(el.content)
     if el.classes:includes("section") then
         if el.attr and el.attr.attributes and el.attr.attributes.number then
@@ -311,20 +310,21 @@ Writer.Block.Div = function(el, opts)
                 -- apply one unit of indent per heading level (even if levels may or may not be nested)
                 indent = (#fragments > 1 and #fragments < 4) and TEXT_INDENT or 0
             end
-            local sec = ''
+            local sec
             if divide_section then
-                sec = extended_ascii and ('§' .. section) or ('[' .. section .. ']')
                 if #fragments < 4 then
+                    sec = extended_ascii and ('§' .. section) or ('[' .. section .. ']')
                     -- horizontal line above section header
                     local schar = #fragments == 1 and sepchars[1] or sepchars[2]
                     local slen = opts.columns - indent - 1 - string.len(sec)
                     sec = nowrap(concat{string.rep(schar, slen), space, sec})
-                else
-                    sec = nowrap(sec)
                 end
             end
             if #fragments > 1 then
-                return nest(concat{sec, cr, doc}, indent)
+                if sec then
+                    return nest(concat{sec, cr, doc}, indent)
+                end
+                return nest(doc, indent)
             else
                 return concat{sec, cr, doc}
             end
@@ -514,7 +514,13 @@ Writer.Block.CodeBlock = function(el)
             prefix = prefix .. idx
         end
     end
-    return concat{ prefix, cr, nest(el.text:gsub('%s*$', ''), TEXT_INDENT), cr, '<' }
+    if nested_codeblock then
+        return nest(el.text:gsub('%s*$', ''), TEXT_INDENT)
+    end
+    nested_codeblock = true
+    local formatted = concat{ prefix, cr, nest(el.text:gsub('%s*$', ''), TEXT_INDENT), cr, '<' }
+    nested_codeblock = false
+    return formatted
 end
 
 do
@@ -526,8 +532,13 @@ do
 end
 
 Writer.Block.BlockQuote = function(el)
-    -- return concat{'>>', cr, nest(Writer.Blocks(el.content), TEXT_INDENT), cr, '<<'}
-    return concat{'%', cr, Writer.Blocks(el.content), cr, '%'}
+    if nested_blockquote then
+        return Writer.Blocks(el.content)
+    end
+    nested_blockquote = true
+    local formatted = concat{'%', cr, Writer.Blocks(el.content), cr, '%'}
+    nested_blockquote = false
+    return formatted
 end
 
 Writer.Block.HorizontalRule = function(el, opts)
@@ -618,7 +629,7 @@ Writer.Inline.Link = function(el)
 end
 
 Writer.Inline.Image = function(el)
-    local result = {"![", Writer.Inlines(el.caption), "](", el.src, ")"}
+    local result = {"Image:[", Writer.Inlines(el.caption), "]"}
     return concat(result)
 end
 

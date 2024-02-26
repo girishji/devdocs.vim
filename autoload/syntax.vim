@@ -2,13 +2,13 @@ vim9script
 
 var properties = {
     DevdocCodeblock: 'Special',
-    DevdocBlockquote: 'Preproc',
+    DevdocBlockquote: 'None',  # codeblocks are sometimes wrapped in blockquote
     DevdocDefn: 'Statement',
     DevdocLink: 'Underlined',
     # DevdocStrong: 'Special',
     # DevdocEmph: 'Preproc',
-    # DevdocCode: 'CursorLine',
-    DevdocCode: 'String',
+    DevdocCode: 'CursorLine',
+    # DevdocCode: 'String',
     DevdocUnderline: 'Underlined',
     DevdocSection: 'Comment',
     DevdocH1: 'Identifier',
@@ -61,13 +61,13 @@ export def Syntax(doc: dict<any>)
             codeblock_langs[i] = lang
         endif
     endfor
+    def LangMissing(lst: list<any>): bool
+        return lst->len() == 2 || (lst->len() == 3 && missing->get(str2nr(lst[2]), false))
+    enddef
     for tag in ['blockquote', 'codeblock']
         var group = $'Devdoc{tag[0]->toupper()}{tag[1 : ]}'
         if doc[tag]->type() != v:t_dict
             if tag == 'codeblock'
-                def LangMissing(lst: list<any>): bool
-                    return lst->len() == 2 || (lst->len() == 3 && missing->get(str2nr(lst[2]), false))
-                enddef
                 var lang_absent = (doc[tag])->copy()->filter((_, v) => LangMissing(v))
                 {type: group}->prop_add_list(lang_absent->mapnew((_, v) => [v[0], 1, v[1], 1000]))
             else
@@ -77,12 +77,12 @@ export def Syntax(doc: dict<any>)
     endfor
     # syntax highlight code blocks
     for [i, lang] in codeblock_langs->items()
-        exe $':syntax include @CodeBlock{i} {$VIMRUNTIME}/syntax/{lang}.vim'
+        exe $':syntax include @LangPod{i} {$VIMRUNTIME}/syntax/{lang}.vim'
         if has("conceal")
-            exe $':syn region helpExample matchgroup=helpIgnore start=" >{i}$" start="^>{i}$" end="^<$" end=" <$" contains=@CodeBlock{i} concealends'
+            exe $':syn region devdocCodeBlock matchgroup=helpIgnore start=" >{i}$" start="^>{i}$" end="^<$" end=" <$" contains=@LangPod{i} concealends'
             :setl conceallevel=2
         else
-            exe $':syn region helpExample matchgroup=helpIgnore start=" >{i}$" start="^>{i}$" end="^<$" end=" <$" contains=@CodeBlock{i}'
+            exe $':syn region devdocCodeBlock matchgroup=helpIgnore start=" >{i}$" start="^>{i}$" end="^<$" end=" <$" contains=@LangPod{i}'
         endif
     endfor
 enddef
