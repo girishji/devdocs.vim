@@ -5,10 +5,7 @@ var properties = {
     DevdocBlockquote: 'None',  # codeblocks are sometimes wrapped in blockquote
     DevdocDefn: 'Statement',
     DevdocLink: 'Underlined',
-    # DevdocStrong: 'Special',
-    # DevdocEmph: 'Preproc',
-    DevdocCode: 'CursorLine',
-    # DevdocCode: 'String',
+    DevdocCode: 'String',
     DevdocUnderline: 'Underlined',
     DevdocSection: 'Comment',
     DevdocH1: 'Identifier',

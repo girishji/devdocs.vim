@@ -8,13 +8,21 @@ import autoload 'install.vim'
 import autoload 'uninstall.vim'
 import autoload 'find.vim'
 import autoload 'devdoc.vim'
+import autoload 'options.vim'
 
-nnoremap <leader>h <scriptcmd>install.Install()<CR>
-# command DevdocsInstall <scriptcmd>install.Install()
-nnoremap <leader>H <scriptcmd>uninstall.Uninstall()<CR>
-nnoremap <leader>f <scriptcmd>find.Find()<CR>
+nnoremap <leader>I <scriptcmd>install.Install()<CR>
+nnoremap <leader>U <scriptcmd>uninstall.Uninstall()<CR>
+nnoremap <leader>h <scriptcmd>find.Find()<CR>
 
 autocmd filetype devdoc nnoremap <buffer> <silent> q :q<CR>
             \| nnoremap <buffer> <silent> <c-]> <scriptcmd>devdoc.GetPage()<CR>
             \| nnoremap <buffer> <silent> K     <scriptcmd>devdoc.GetPage()<CR>
             \| nnoremap <buffer> <silent> <c-t> <scriptcmd>devdoc.PopPage()<CR>
+
+command DevdocsInstall install.Install()
+command DevdocsUninstall uninstall.Uninstall()
+command DevdocsFind find.Find()
+
+def! g:DevdocsOptionsSet(opt: dict<any>)
+    options.opt->extend(opt)
+enddef
