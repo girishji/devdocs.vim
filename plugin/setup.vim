@@ -16,4 +16,5 @@ nnoremap <leader>f <scriptcmd>find.Find()<CR>
 
 autocmd filetype devdoc nnoremap <buffer> <silent> q :q<CR>
             \| nnoremap <buffer> <silent> <c-]> <scriptcmd>devdoc.GetPage()<CR>
+            \| nnoremap <buffer> <silent> K     <scriptcmd>devdoc.GetPage()<CR>
             \| nnoremap <buffer> <silent> <c-t> <scriptcmd>devdoc.PopPage()<CR>

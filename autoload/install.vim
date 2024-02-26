@@ -77,10 +77,7 @@ def FetchSlug(entry: dict<any>)
         (msg: string) => {
             if !aborted && $'{tmpdir}/index.json'->filereadable() && $'{tmpdir}/db.json'->filereadable()
                 notif.Update(Text('Extracting archive ...'))
-                if [entry->json_encode()]->writefile($'{tmpdir}/slug.json') == -1
-                    :echohl ErrorMsg | echoerr $'Failed to write {tmpdir}/slug.json' | echohl None
-                    tmpdir->isdirectory() && tmpdir->delete('rf')
-                elseif Extract(outdir)
+                if Extract(outdir)
                     # 100 MB json file takes 30s to extract
                     echom $'{entry.slug} installed successfully in {data_dir}'
                     notif.Update(Text('Success!'))

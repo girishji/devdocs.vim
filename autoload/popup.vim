@@ -10,6 +10,7 @@ var options = {
 }
 
 export class FilterMenuPopup
+
     var prompt: string = ''
     var id: number
     var title: string

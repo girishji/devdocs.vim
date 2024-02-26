@@ -12,6 +12,7 @@ local literal, empty, cr, concat, blankline, chomp, space, cblock, rblock,
     layout.prefixed, layout.nest, layout.hang, layout.nowrap, layout.height
 local footnotes = {}
 local links = {}
+local cblangs = {}  -- languages in codeblocks
 local TEXT_INDENT = 4
 local TEXT_WIDTH = 80
 local marker = {link = '¦', strong = '‡', emph = '†', code = '·', underline = '¿'}
@@ -149,7 +150,7 @@ local function scrub(line, lnum, init)
     return table.concat(scrublist), mitems
 end
 
-local function resolve(doc)
+local function scrub_markup(doc)
     local formatted, error = {}, {}
     local lnum, startl = 1, 1
     local tag, codeblock, defn, blockquote, section = {}, {}, {}, {}, {}
@@ -158,7 +159,7 @@ local function resolve(doc)
     for k in pairs(marker) do
         mitems[k] = {}
     end
-    local startcb, startbq
+    local startcb, startbq, lang_in_codeblock
     local remove_next_line = false
     local endl = doc:find('\n', 1, true)
     while endl do
@@ -169,9 +170,10 @@ local function resolve(doc)
         elseif startbq and line:find('%s*%%$') then
             table.insert(blockquote, {startbq, lnum - 1})
             startbq = nil
-        elseif not startcb and line:find('%s*>$') then
+        elseif not startcb and line:find('%s*>%d*$') then
             startcb = lnum
-            if fence_codeblock then
+            lang_in_codeblock = line:match('%s*>(%d+)$')
+            if fence_codeblock and lang_in_codeblock then
                 if string.match(formatted[#formatted], '^%s*$') then
                     table.remove(formatted) -- remove previous line
                     lnum = lnum - 1
@@ -180,9 +182,14 @@ local function resolve(doc)
                 lnum = lnum + 1
             end
         elseif startcb and line:find('%s*<$') then
+            if lang_in_codeblock then
+                table.insert(codeblock, {startcb, lnum - 1, lang_in_codeblock})
+            else
+                table.insert(codeblock, {startcb, lnum - 1})
+            end
             table.insert(codeblock, {startcb, lnum - 1})
             startcb = nil
-            if fence_codeblock then
+            if fence_codeblock and lang_in_codeblock then
                 remove_next_line = true
                 table.insert(formatted, line .. '\n')
                 lnum = lnum + 1
@@ -251,9 +258,9 @@ local function resolve(doc)
     local res = {}
     res.doc, res.error, res.tag, res.codeblock, res.blockquote, res.defn,
         res.link, res.strong, res.emph, res.code, res.underline,
-        res.section, res.h1, res.h2, res.h3, res.h4, res.h5, res.h6 =
+        res.section, res.cblangs, res.h1, res.h2, res.h3, res.h4, res.h5, res.h6 =
         formatted, error, tag, codeblock, blockquote, defn, link_add_target(),
-        mitems.strong, mitems.emph, mitems.code, mitems.underline, section,
+        mitems.strong, mitems.emph, mitems.code, mitems.underline, section, cblangs,
         h[1], h[2], h[3], h[4], h[5], h[6]
     return res
 end
@@ -275,7 +282,7 @@ Writer.Pandoc = function(doc, opts)
     -- Doc type returned by layout functions is just a string
     local doc = layout.render(formatted, opts.columns)
     -- print(doc)
-    local payload = resolve(doc)
+    local payload = scrub_markup(doc)
     return pandoc.json.encode(payload)
 end
 
@@ -483,7 +490,31 @@ Writer.Block.OrderedList = function(el)
 end
 
 Writer.Block.CodeBlock = function(el)
-    return concat{ '>', cr, nest(el.text:gsub('%s*$', ''), TEXT_INDENT), cr, '<' }
+    local function index(t, v)
+        for i, item in ipairs(t) do
+            if item == v then
+                return i
+            end
+        end
+        return -1
+    end
+    local prefix = '>'
+    local attr = el.attributes
+    if attr and #attr > 0 then
+        local prop = attr[#attr]
+        if #prop == 2 then
+            local lang = prop[2]
+            local idx = index(cblangs, lang)
+            if idx == -1 then
+                cblangs[#cblangs + 1] = lang
+                idx = #cblangs - 1
+            else
+                idx = idx - 1
+            end
+            prefix = prefix .. idx
+        end
+    end
+    return concat{ prefix, cr, nest(el.text:gsub('%s*$', ''), TEXT_INDENT), cr, '<' }
 end
 
 do
