@@ -6,7 +6,6 @@ import './task.vim'
 
 var stack = []
 var data_dir = options.opt.data_dir
-var curpage: dict<any> = null_dict
 var path2bufnr: dict<any>
 
 def Page(target: string, slug: string, absolute_path: bool): dict<any>
@@ -20,6 +19,7 @@ def Page(target: string, slug: string, absolute_path: bool): dict<any>
     elseif target != null_string
         path = target
     endif
+    var curpage = bufnr()->getbufvar('page')
     if path != null_string
         # could be absolute or relative path
         # do not use fnameescape() as it escapes $localize.html in angular which fails
@@ -90,7 +90,6 @@ def LoadLocation(page: dict<any>): bool
     :setl bufhidden=hide
     :setl nobuflisted
     :setl noma
-    curpage = page
     return true
 enddef
 
@@ -123,6 +122,7 @@ enddef
 export def GetPage()
     var curline = line('.')
     var curcol = col('.')
+    var curpage = bufnr()->getbufvar('page')
     for lnk in curpage.doc.link
         if lnk[2] == curline && curcol <= lnk[4] && curcol >= lnk[3]
             LoadPage(lnk[1], curpage.slug)
@@ -133,8 +133,8 @@ export def GetPage()
 enddef
 
 export def LoadDoc(page: dict<any>)
+    var curpage = bufnr()->getbufvar('page')
     stack->add({bufnr: bufnr("%"), line: line("."), col: col("."), page: curpage})
-    curpage = page
 
     var open_cmd = OpenWinCmd()
     def Rand(): string
@@ -156,6 +156,8 @@ export def LoadDoc(page: dict<any>)
     :setl bufhidden=hide
     :setl nobuflisted
     :setl noma
+
+    page->setbufvar(bufnr(), 'page')
     path2bufnr[$'{page.slug}/{page.path}'] = bufnr('%')
     syntax.Syntax(page.doc)
 enddef
@@ -165,6 +167,5 @@ export def PopPage()
         var entry = stack->remove(-1)
         exec $':{entry.bufnr}b'
         cursor(entry.line, entry.col)
-        curpage = entry.page
     endif
 enddef
