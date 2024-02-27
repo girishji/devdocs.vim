@@ -2,22 +2,45 @@ vim9script
 
 var options = {
     borderchars: ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
-    bordertitle: ['─┐', '┌'],
+    bordercharsp: ['─', '│', '─', '│', '┌', '┐', '┤', '├'],
     borderhighlight: hlexists('PopupBorderHighlight') ? ['PopupBorderHighlight'] : [],
     popuphighlight: get(g:, "popuphighlight", 'Normal'),
     popupscrollbarhighlight: get(g:, "popupscrollbarhighlight", 'PmenuSbar'),
-    popupthumbhighlight: get(g:, "popupthumbhighlight", 'PmenuThumb')
+    popupthumbhighlight: get(g:, "popupthumbhighlight", 'PmenuThumb'),
+    promptchar: '>',
 }
 
 export class FilterMenuPopup
 
     var prompt: string = ''
     var id: number
+    var idp: number  # id of prompt window
     var title: string
     var items_dict: list<dict<any>>
     var filtered_items: list<any>
 
-    def new(title: string, items_dict: list<dict<any>>, Callback: func(any, string), Setup: func(number) = null_function, GetItems: func(list<any>, string): list<any> = null_function, is_hidden: bool = false, winheight: number = 0, winwidth: number = 0)
+    def _CommonProps(borderchars: list<string>, top_pos: number, winheight: number, minwidth: number, maxwidth: number): dict<any>
+        return {
+            line: top_pos,
+            minwidth: minwidth,
+            maxwidth: maxwidth,
+            minheight: winheight,
+            maxheight: winheight,
+            border: [],
+            borderchars: borderchars,
+            borderhighlight: options.borderhighlight,
+            highlight: options.popuphighlight,
+            scrollbarhighlight: options.popupscrollbarhighlight,
+            thumbhighlight: options.popupthumbhighlight,
+            drag: 0,
+            wrap: 0,
+            cursorline: false,
+            padding: [0, 1, 0, 1],
+            mapping: 0,
+        }
+    enddef
+
+    def new(title: string, items_dict: list<dict<any>>, Callback: func(any, string), Setup: func(number) = null_function, GetItems: func(list<any>, string): list<any> = null_function)
         if empty(prop_type_get('FilterMenuMatch'))
             highlight default FilterMenuMatch term=bold cterm=bold gui=bold
             prop_type_add('FilterMenuMatch', {highlight: "FilterMenuMatch", override: true, priority: 1000, combine: true})
@@ -26,15 +49,9 @@ export class FilterMenuPopup
         this.items_dict = items_dict
         this.filtered_items = [this.items_dict]
         var items_count = this.items_dict->len()
-        var height = min([&lines - 6, max([items_count, 5])])
-        if winheight > 0
-            height = winheight
-        endif
+        var height = min([&lines - 8, max([items_count, 5])])
         var minwidth = (&columns * 0.6)->float2nr()
-        var maxwidth = (&columns - 8)
-        if winwidth > 0
-            [minwidth, maxwidth] = [winwidth, winwidth]
-        endif
+        var maxwidth = (&columns - 14)
         var pos_top = ((&lines - height) / 2) - 1
         var ignore_input = ["\<cursorhold>", "\<ignore>", "\<Nul>",
                     \ "\<LeftMouse>", "\<LeftRelease>", "\<LeftDrag>", $"\<2-LeftMouse>",
@@ -47,39 +64,26 @@ export class FilterMenuPopup
         # this sequence of bytes are generated when left/right mouse is pressed and
         # mouse wheel is rolled
         var ignore_input_wtf = [128, 253, 100]
-        var winid = popup_create(this._Printify(this.filtered_items), {
-            title: $" ({items_count}/{items_count}) {this.title} {options.bordertitle[0]}  {options.bordertitle[1]}",
-            line: pos_top,
-            minwidth: minwidth,
-            maxwidth: maxwidth,
-            minheight: height,
-            maxheight: height,
-            border: [],
-            borderchars: options.borderchars,
-            borderhighlight: options.borderhighlight,
-            highlight: options.popuphighlight,
-            scrollbarhighlight: options.popupscrollbarhighlight,
-            thumbhighlight: options.popupthumbhighlight,
-            drag: 0,
-            wrap: (winwidth > 0) ? 0 : 1,
-            cursorline: false,
-            padding: [0, 1, 0, 1],
-            mapping: 0,
-            hidden: is_hidden,
+
+        this.idp = popup_create([$'{options.promptchar}  '],
+            # this._CommonProps(options.bordercharsp, pos_top, 1, width, width)->extend({
+            this._CommonProps(options.bordercharsp, pos_top, 1, minwidth, maxwidth)->extend({
+            title: $" ({items_count}/{items_count}) {this.title}",
+            }))
+        matchaddpos('Cursor', [[1, 3]], 10, -1, {window: this.idp})
+
+        this.id = popup_create(this._Printify(this.filtered_items),
+            this._CommonProps(options.borderchars, pos_top + 3, height, minwidth, maxwidth)->extend({
+            border: [0, 1, 1, 1],
             filter: (id, key) => {
                 items_count = this.items_dict->len()
-                if winwidth <= 0
-                    var new_minwidth = popup_getpos(id).core_width
-                    if new_minwidth > minwidth
-                        minwidth = new_minwidth
-                        popup_move(id, {minwidth: minwidth})
-                    endif
-                endif
                 if key == "\<esc>"
                     popup_close(id, -1)
+                    popup_close(this.idp, -1)
                 elseif ["\<cr>", "\<C-j>", "\<C-v>", "\<C-t>", "\<C-o>"]->index(key) > -1
                         && this.filtered_items[0]->len() > 0 && items_count > 0
                     popup_close(id, {idx: getcurpos(id)[1], key: key})
+                    popup_close(this.idp, -1)
                 elseif key == "\<Right>" || key == "\<PageDown>"
                     win_execute(id, 'normal! ' .. "\<C-d>")
                 elseif key == "\<Left>" || key == "\<PageUp>"
@@ -113,8 +117,24 @@ export class FilterMenuPopup
                     endif
                     var GetItemsFn = GetItems == null_function ? this._GetItems : GetItems
                     [this.items_dict, this.filtered_items] = GetItemsFn(this.items_dict, this.prompt)
-                    popup_setoptions(id, {title: $" ({items_count > 0 ? this.filtered_items[0]->len() : 0}/{items_count}) {this.title} {options.bordertitle[0]} {this.prompt} {options.bordertitle[1]}" })
-                    popup_settext(id, this._Printify(this.filtered_items))
+                    var titletxt = $" ({items_count > 0 ? this.filtered_items[0]->len() : 0}/{items_count}) {this.title}"
+                    this.idp->popup_setoptions({title: titletxt})
+                    id->popup_settext(this._Printify(this.filtered_items))
+                    this.idp->popup_settext($'{options.promptchar} {this.prompt} ')
+                    this.idp->clearmatches()
+                    matchaddpos('Cursor', [[1, 3 + this.prompt->len()]], 10, -1, {window: this.idp})
+
+                    var new_width = id->popup_getpos().core_width
+                    if new_width > minwidth
+                        minwidth = new_width
+                        popup_move(id, {minwidth: minwidth})
+                        var widthp = minwidth + (id->popup_getpos().scrollbar ? 1 : 0)
+                        popup_move(this.idp, {minwidth: widthp, maxwidth: widthp})
+                    else
+                        var pos = id->popup_getpos()
+                        var widthp = minwidth + (pos.scrollbar ? 1 : 0)
+                        popup_move(this.idp, {minwidth: widthp, maxwidth: widthp})
+                    endif
                 endif
                 return true
             },
@@ -127,12 +147,14 @@ export class FilterMenuPopup
                     Callback(this.filtered_items[0][result.idx - 1], result.key)
                 endif
             }
-        })
-        win_execute(winid, "setl nu cursorline cursorlineopt=both")
+        }))
+        win_execute(this.id, "setl nu cursorline cursorlineopt=both")
+        var widthp = this.id->popup_getpos().scrollbar ? minwidth + 1 : minwidth
+        popup_move(this.idp, {minwidth: widthp, maxwidth: widthp})
         if Setup != null_function
-            Setup(winid)
+            Setup(this.id)
         endif
-        this.id = winid
+        this.id = this.id
     enddef
 
     def _GetItems(lst: list<dict<any>>, ctx: string): list<any>
@@ -174,7 +196,7 @@ export class NotificationPopup
     enddef
 
     def new(text: list<string>, DismissedCb: func = null_function)
-        var winid = popup_create(text, {
+        this.id = popup_create(text, {
             minwidth: 35,
             zindex: 300,
             mapping: 0,
@@ -197,7 +219,6 @@ export class NotificationPopup
                 endif
             }
         })
-        this.id = winid
     enddef
 endclass
 

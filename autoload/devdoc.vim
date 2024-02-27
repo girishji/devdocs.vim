@@ -156,6 +156,8 @@ export def LoadDoc(page: dict<any>)
     :setl bufhidden=hide
     :setl nobuflisted
     :setl noma
+    :setl listchars=trail:\ ,tab:\ \ 
+    :setl fillchars=eob:\ 
 
     page->setbufvar(bufnr(), 'page')
     path2bufnr[$'{page.slug}/{page.path}'] = bufnr('%')
