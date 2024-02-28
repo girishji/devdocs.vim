@@ -2,7 +2,7 @@ vim9script
 
 var options = {
     borderchars: ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
-    bordercharsp: ['─', '│', '─', '│', '┌', '┐', '┤', '├'],
+    bordercharsp: ['─', '│', '═', '│', '┌', '┐', '╡', '╞'],
     borderhighlight: hlexists('PopupBorderHighlight') ? ['PopupBorderHighlight'] : [],
     popuphighlight: get(g:, "popuphighlight", 'Normal'),
     popupscrollbarhighlight: get(g:, "popupscrollbarhighlight", 'PmenuSbar'),
@@ -69,7 +69,7 @@ export class FilterMenuPopup
         this.idp = popup_create([$'{options.promptchar}  '],
             # this._CommonProps(options.bordercharsp, pos_top, 1, width, width)->extend({
             this._CommonProps(options.bordercharsp, pos_top, 1, minwidth, maxwidth)->extend({
-            title: $" ({items_count}/{items_count}) {this.title}",
+            title: $" ({items_count}/{items_count}) {this.title} ",
             }))
         matchaddpos('Cursor', [[1, 3]], 10, -1, {window: this.idp})
 
@@ -118,7 +118,7 @@ export class FilterMenuPopup
                     endif
                     var GetItemsFn = GetItems == null_function ? this._GetItems : GetItems
                     [this.items_dict, this.filtered_items] = GetItemsFn(this.items_dict, this.prompt)
-                    var titletxt = $" ({items_count > 0 ? this.filtered_items[0]->len() : 0}/{items_count}) {this.title}"
+                    var titletxt = $" ({items_count > 0 ? this.filtered_items[0]->len() : 0}/{items_count}) {this.title} "
                     this.idp->popup_setoptions({title: titletxt})
                     id->popup_settext(this._Printify(this.filtered_items))
                     # this.idp->popup_settext($'{options.promptchar} {this.prompt}{options.cursorchar}')
