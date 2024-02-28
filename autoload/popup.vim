@@ -8,6 +8,7 @@ var options = {
     popupscrollbarhighlight: get(g:, "popupscrollbarhighlight", 'PmenuSbar'),
     popupthumbhighlight: get(g:, "popupthumbhighlight", 'PmenuThumb'),
     promptchar: '>',
+    # cursorchar: '█',
 }
 
 export class FilterMenuPopup
@@ -120,6 +121,7 @@ export class FilterMenuPopup
                     var titletxt = $" ({items_count > 0 ? this.filtered_items[0]->len() : 0}/{items_count}) {this.title}"
                     this.idp->popup_setoptions({title: titletxt})
                     id->popup_settext(this._Printify(this.filtered_items))
+                    # this.idp->popup_settext($'{options.promptchar} {this.prompt}{options.cursorchar}')
                     this.idp->popup_settext($'{options.promptchar} {this.prompt} ')
                     this.idp->clearmatches()
                     matchaddpos('Cursor', [[1, 3 + this.prompt->len()]], 10, -1, {window: this.idp})

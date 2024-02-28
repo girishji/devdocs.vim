@@ -171,9 +171,9 @@ local function scrub_markup(doc)
         elseif startbq and line:find('%s*%%$') then
             table.insert(blockquote, {startbq, lnum - 1})
             startbq = nil
-        elseif not startcb and line:find('%s*>%d*$') then
+        elseif not startcb and line:find('%s*>%w*$') then
             startcb = lnum
-            lang_in_codeblock = line:match('%s*>(%d+)$')
+            lang_in_codeblock = line:match('%s*>(%w+)$')
             if fence_codeblock and lang_in_codeblock ~= nil then
                 if string.match(formatted[#formatted], '^%s*$') then
                     table.remove(formatted) -- remove previous line
@@ -496,7 +496,7 @@ Writer.Block.CodeBlock = function(el)
                 return i
             end
         end
-        return -1
+        return nil
     end
     local prefix = '>'
     local attr = el.attributes
@@ -504,14 +504,13 @@ Writer.Block.CodeBlock = function(el)
         local prop = attr[#attr]
         if #prop == 2 then
             local lang = prop[2]
-            local idx = index(cblangs, lang)
-            if idx == -1 then
-                cblangs[#cblangs + 1] = lang
-                idx = #cblangs - 1
-            else
-                idx = idx - 1
+            if lang == 'shell' then
+                lang = 'sh'  -- vim syntax file's name is sh.vim
             end
-            prefix = prefix .. idx
+            if not index(cblangs, lang) then
+                table.insert(cblangs, lang)
+            end
+            prefix = prefix .. lang
         end
     end
     if nested_codeblock then

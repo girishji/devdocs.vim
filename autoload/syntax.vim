@@ -3,17 +3,17 @@ vim9script
 var properties = {
     DevdocCodeblock: 'Special',
     DevdocBlockquote: 'None',  # codeblocks are sometimes wrapped in blockquote
-    DevdocDefn: 'Statement',
     DevdocLink: 'Underlined',
     DevdocCode: 'String',
     DevdocUnderline: 'Underlined',
     DevdocSection: 'Comment',
+    DevdocDefn: 'Statement',
     DevdocH1: 'Identifier',
-    DevdocH2: 'Constant',
+    DevdocH2: 'Identifier',
     DevdocH3: 'Identifier',
     DevdocH4: 'Identifier',
-    DevdocH5: 'Statement',
-    DevdocH6: 'Statement',
+    DevdocH5: 'Identifier',
+    DevdocH6: 'Identifier',
 }
 
 export def Syntax(doc: dict<any>)
@@ -49,17 +49,9 @@ export def Syntax(doc: dict<any>)
     endfor
     var syntax_langs = $'{$VIMRUNTIME}/syntax'->readdir((v) => v =~ '\.vim$')
     syntax_langs->map((_, v) => v->slice(0, -4))
-    var codeblock_langs = {}
-    var missing = {}
-    for [i, lang] in doc.cblangs->items()
-        if syntax_langs->index(lang) == -1
-            missing[i] = true
-        else
-            codeblock_langs[i] = lang
-        endif
-    endfor
+    var missing = doc.cblangs->copy()->filter((_, v) => syntax_langs->index(v) == -1)
     def LangMissing(lst: list<any>): bool
-        return lst->len() == 2 || (lst->len() == 3 && missing->get(str2nr(lst[2]), false))
+        return lst->len() == 2 || (lst->len() == 3 && missing->index(lst[2]) != -1)
     enddef
     for tag in ['blockquote', 'codeblock']
         var group = $'Devdoc{tag[0]->toupper()}{tag[1 : ]}'
@@ -73,14 +65,17 @@ export def Syntax(doc: dict<any>)
         endif
     endfor
     # syntax highlight code blocks
-    for [i, lang] in codeblock_langs->items()
-        exe $':syntax include @LangPod{i} {$VIMRUNTIME}/syntax/{lang}.vim'
+    for lang in doc.cblangs
+        var cmd = $':syn region devdocCodeBlock matchgroup=helpIgnore start=" >{lang}$" start="^>{lang}$" end="^<$" end=" <$"'
+        if missing->index(lang) == -1
+            exe $':syntax include @LangPod_{lang} {$VIMRUNTIME}/syntax/{lang}.vim'
+            cmd = $'{cmd} contains=@LangPod_{lang}'
+        endif
         if has("conceal")
-            exe $':syn region devdocCodeBlock matchgroup=helpIgnore start=" >{i}$" start="^>{i}$" end="^<$" end=" <$" contains=@LangPod{i} concealends'
+            :exe $'{cmd} concealends'
             :setl conceallevel=2
         else
-            exe $':syn region devdocCodeBlock matchgroup=helpIgnore start=" >{i}$" start="^>{i}$" end="^<$" end=" <$" contains=@LangPod{i}'
+            :exe $'{cmd}'
         endif
     endfor
 enddef
-

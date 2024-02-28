@@ -4,6 +4,8 @@ if !has('vim9script') ||  v:version < 901
 endif
 vim9script
 
+g:loaded_devdocs = true
+
 import autoload 'install.vim'
 import autoload 'uninstall.vim'
 import autoload 'find.vim'
