@@ -8,6 +8,22 @@ var stack = []
 var data_dir = options.opt.data_dir
 var path2bufnr: dict<any>
 
+def GetOptionStr(): string
+    var omap = {
+        use_terminal_width: 'utw',
+        extended_ascii: 'ea',
+        indent_section: 'is',
+        divide_section: 'ds',
+        fence_codeblock: 'fc'
+    }
+    var ostr = null_string
+    for [opt, val] in options.opt.format->items()
+        var oval = val ? omap[opt] : $'no{omap[opt]}'
+        ostr = (ostr == null_string) ? oval : $'{ostr}:{oval}'
+    endfor
+    return ostr
+enddef
+
 def Page(target: string, slug: string, absolute_path: bool): dict<any>
     var [path, tag] = [null_string, null_string]
     var tagidx = target->strridx('#')
@@ -104,6 +120,7 @@ export def LoadPage(fpath: string, slug: string, absolute_path: bool = false)
         return
     endif
     var scriptdir = getscriptinfo({name: 'devdocs'})[0].name->fnamemodify(':h:h')
+    var opts = GetOptionStr()
     task.AsyncCmd.new(
         $'{options.opt.pandoc} -t {scriptdir}/pandoc/writer.lua {fullpath}',
         (msg: string) => {
@@ -116,7 +133,7 @@ export def LoadPage(fpath: string, slug: string, absolute_path: bool = false)
             endtry
             page.doc = doc
             LoadDoc(page)
-        })
+        }, opts == null_string ? null_dict : {DEVDOC_OPTS: opts})
 enddef
 
 export def GetPage()

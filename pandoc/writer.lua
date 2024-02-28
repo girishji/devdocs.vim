@@ -16,16 +16,6 @@ local cblangs = {}  -- languages in codeblocks
 local TEXT_INDENT = 4
 local TEXT_WIDTH = 80
 local marker = {link = '¦', strong = '‡', emph = '†', code = '·', underline = '¿'}
-local emptylines_around_codeblock = false
-local use_terminal_width = true
--- only for unicode font sets, not for 'fixedsys' font.
-local extended_ascii = true
-local indent_section = false
-local divide_section = true
-local fence_codeblock = true
-local sepchars = extended_ascii and { '═', '—' } or { '=', '-' }
-local doublequote = extended_ascii and { '"', '"'} or {'"', '"'}
-local singlequote = extended_ascii and { "'", "'"} or {"'", "'"}
 local nested_blockquote, nested_codeblock = false, false
 
 local function string_split(str, pat)
@@ -36,11 +26,42 @@ local function string_split(str, pat)
     return split
 end
 
+local options = {
+    use_terminal_width = true,
+    extended_ascii = true,  -- only for unicode font sets, not for 'fixedsys' font.
+    indent_section = false,
+    divide_section = true,
+    fence_codeblock = true,
+
+    utw = 'use_terminal_width',
+    ea = 'extended_ascii',
+    is = 'indent_section',
+    ds = 'divide_section',
+    fc = 'fence_codeblock',
+}
+
+do
+    local env = pandoc.system.environment()
+    if env.DEVDOC_OPTS then
+        for _, opt in ipairs(string_split(env.DEVDOC_OPTS, '[^:]+')) do
+            if options[opt] then
+                options[options[opt]] = true
+            elseif opt:sub(1, 2) == 'no' and options[opt:sub(3)] then
+                options[options[opt:sub(3)]] = false
+            end
+        end
+    end
+end
+
+local sepchars = options.extended_ascii and { '═', '—' } or { '=', '-' }
+local doublequote = options.extended_ascii and { '"', '"'} or {'"', '"'}
+local singlequote = options.extended_ascii and { "'", "'"} or {"'", "'"}
+
 local function set_columns(opts)
     if opts.columns == pandoc.WriterOptions({}).columns then
         -- 'columns' is not set in command line
         opts.columns = TEXT_WIDTH
-        if not use_terminal_width then
+        if not options.use_terminal_width then
             return
         end
         local out = pandoc.pipe('tput', {'cols'}, '')
@@ -174,7 +195,7 @@ local function scrub_markup(doc)
         elseif not startcb and line:find('%s*>%w*$') then
             startcb = lnum
             lang_in_codeblock = line:match('%s*>(%w+)$')
-            if fence_codeblock and lang_in_codeblock ~= nil then
+            if options.fence_codeblock and lang_in_codeblock ~= nil then
                 if string.match(formatted[#formatted], '^%s*$') then
                     table.remove(formatted) -- remove previous line
                     lnum = lnum - 1
@@ -189,7 +210,7 @@ local function scrub_markup(doc)
                 table.insert(codeblock, {startcb, lnum - 1})
             end
             startcb = nil
-            if fence_codeblock and lang_in_codeblock ~= nil then
+            if options.fence_codeblock and lang_in_codeblock ~= nil then
                 remove_next_line = true
                 table.insert(formatted, line .. '\n')
                 lnum = lnum + 1
@@ -211,7 +232,8 @@ local function scrub_markup(doc)
                         end
                     end
                 elseif line:find('^%s*' .. string.rep(sepchars[1], 10)) or
-                    line:find('^%s*' .. string.rep(sepchars[2], 10)) then
+                    line:find('^%s*' .. (sepchars[2] == '-' and '%-' or '') .. string.rep(sepchars[2], 10)) then
+                    -- char '-' is a special char in lua, just like '*'
                     table.insert(section, lnum)
                 end
                 -- tagged words
@@ -275,7 +297,7 @@ Writer.Pandoc = function(doc, opts)
         table.insert(notes, note)
     end
     local formatted = concat{d, blankline, concat(notes, blankline)}
-    if not indent_section then
+    if not options.indent_section then
         -- indent the whole document
         formatted = nest(formatted, 2)
     end
@@ -306,14 +328,14 @@ Writer.Block.Div = function(el, opts)
             local section = el.attr.attributes.number
             local fragments = string_split(section, '[^.]+')
             local indent = 0
-            if indent_section then
+            if options.indent_section then
                 -- apply one unit of indent per heading level (even if levels may or may not be nested)
                 indent = (#fragments > 1 and #fragments < 4) and TEXT_INDENT or 0
             end
             local sec
-            if divide_section then
+            if options.divide_section then
                 if #fragments < 4 then
-                    sec = extended_ascii and ('§' .. section) or ('[' .. section .. ']')
+                    sec = options.extended_ascii and ('§' .. section) or ('[' .. section .. ']')
                     -- horizontal line above section header
                     local schar = #fragments == 1 and sepchars[1] or sepchars[2]
                     local slen = opts.columns - indent - 1 - string.len(sec)
@@ -321,12 +343,9 @@ Writer.Block.Div = function(el, opts)
                 end
             end
             if #fragments > 1 then
-                if sec then
-                    return nest(concat{sec, cr, doc}, indent)
-                end
-                return nest(doc, indent)
+                return sec and nest(concat{sec, cr, doc}, indent) or nest(doc, indent)
             else
-                return concat{sec, cr, doc}
+                return sec and concat{sec, cr, doc} or doc
             end
         else
             if el.attr.identifier ~= nil and el.attr.identifier ~= '' then
@@ -421,7 +440,7 @@ Writer.Block.Table = function(el, opts)
     opts.columns = opts.columns - TEXT_INDENT
     local table = pandoc.write(pandoc.Pandoc({el}):walk(filter()), "rst", opts)
     opts.columns = savedcols
-    if extended_ascii then
+    if options.extended_ascii then
         return Writer.Block.RawBlock(pandoc.RawBlock('rst_table', table))
     else
         return table

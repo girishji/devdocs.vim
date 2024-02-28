@@ -9,7 +9,7 @@ export class AsyncCmd
         endif
     enddef
 
-    def new(cmd: any, CallbackFn: func(string))
+    def new(cmd: any, CallbackFn: func(string), env: dict<any> = null_dict)
         # ch_logfile('/tmp/channellog', 'w')
         # ch_log('BuildItemsList call')
         var start = reltime()
@@ -31,6 +31,6 @@ export class AsyncCmd
                     :echohl ErrorMsg | echoerr $'{cmd} exited with status {status}' | echohl None
                 endif
             }
-        })
+        }->extend(env != null_dict ? {env: env} : {}))
     enddef
 endclass
