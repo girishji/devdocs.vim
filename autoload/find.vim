@@ -3,7 +3,11 @@ vim9script
 import './popup.vim'
 import './task.vim'
 import './options.vim'
-import autoload 'devdoc.vim'
+if get(g:, 'loaded_devdocs_tui', false)
+    import './devdoc.vim'
+else
+    import autoload 'devdoc.vim'
+endif
 
 var data_dir = options.opt.data_dir
 

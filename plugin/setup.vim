@@ -6,25 +6,39 @@ vim9script
 
 g:loaded_devdocs = true
 
-import autoload 'install.vim'
-import autoload 'uninstall.vim'
-import autoload 'find.vim'
-import autoload 'devdoc.vim'
-import autoload 'options.vim'
+if get(g:, 'loaded_devdocs_tui', false)
+    import '../autoload/install.vim'
+    import '../autoload/uninstall.vim'
+    import '../autoload/find.vim'
+    import '../autoload/devdoc.vim'
+    import '../autoload/options.vim'
+else
+    import autoload 'install.vim'
+    import autoload 'uninstall.vim'
+    import autoload 'find.vim'
+    import autoload 'devdoc.vim'
+    import autoload 'options.vim'
+endif
 
-nnoremap <leader>I <scriptcmd>install.Install()<CR>
-nnoremap <leader>U <scriptcmd>uninstall.Uninstall()<CR>
-nnoremap <leader>h <scriptcmd>find.Find()<CR>
+def Keymaps()
+    if maparg('q', 'n')->empty()
+        :nnoremap <buffer> <silent> q :q<CR>
+    endif
+    :nnoremap <buffer> <silent> <c-]> <scriptcmd>devdoc.GetPage()<CR>
+    :nnoremap <buffer> <silent> K     <scriptcmd>devdoc.GetPage()<CR>
+    :nnoremap <buffer> <silent> <c-t> <scriptcmd>devdoc.PopPage()<CR>
+enddef
 
-autocmd filetype devdoc nnoremap <buffer> <silent> q :q<CR>
-            \| nnoremap <buffer> <silent> <c-]> <scriptcmd>devdoc.GetPage()<CR>
-            \| nnoremap <buffer> <silent> K     <scriptcmd>devdoc.GetPage()<CR>
-            \| nnoremap <buffer> <silent> <c-t> <scriptcmd>devdoc.PopPage()<CR>
+:autocmd filetype devdoc Keymaps()
 
-command DevdocsInstall install.Install()
-command DevdocsUninstall uninstall.Uninstall()
-command DevdocsFind find.Find()
+:command DevdocsInstall install.Install()
+:command DevdocsUninstall uninstall.Uninstall()
+:command DevdocsFind find.Find()
 
 def! g:DevdocsOptionsSet(opt: dict<any>)
     options.opt->extend(opt)
+enddef
+
+def! g:DevdocsOptionsGet(): dict<any>
+    return options.opt->deepcopy()
 enddef

@@ -6,7 +6,7 @@ export var opt = {
     height: 20,
     open_mode: 'split',
     slugs: [],
-    # format: {extended_ascii: false, divide_section: false, use_terminal_width: false, indent_section: true, fence_codeblock: false},
     format: {}
+    # format: {extended_ascii: false, divide_section: false, use_terminal_width: false, indent_section: true, fence_codeblock: false},
 }
 

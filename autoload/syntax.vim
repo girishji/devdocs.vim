@@ -2,9 +2,12 @@ vim9script
 
 var properties = {
     DevdocCodeblock: 'Special',
+    # DevdocCodeblock: 'Identifier',
     DevdocBlockquote: 'None',  # codeblocks are sometimes wrapped in blockquote
-    DevdocLink: 'Underlined',
-    DevdocCode: 'String',
+    DevdocLink: 'SpellCap',
+    # DevdocLink: 'Underlined',
+    # DevdocCode: 'String',
+    DevdocCode: 'CursorLine',
     DevdocUnderline: 'Underlined',
     DevdocSection: 'Comment',
     DevdocDefn: 'Statement',

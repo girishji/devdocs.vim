@@ -42,9 +42,12 @@ export class FilterMenuPopup
     enddef
 
     def new(title: string, items_dict: list<dict<any>>, Callback: func(any, string), Setup: func(number) = null_function, GetItems: func(list<any>, string): list<any> = null_function)
-        if empty(prop_type_get('FilterMenuMatch'))
-            highlight default FilterMenuMatch term=bold cterm=bold gui=bold
-            prop_type_add('FilterMenuMatch', {highlight: "FilterMenuMatch", override: true, priority: 1000, combine: true})
+        if empty(prop_type_get('DevdocMenuMatch'))
+            :highlight default DevdocMenuMatch term=bold cterm=bold gui=bold
+            prop_type_add('DevdocMenuMatch', {highlight: "DevdocMenuMatch", override: true, priority: 1000, combine: true})
+        endif
+        if hlget('DevdocMenuCursor')->empty()
+            :highlight default DevdocMenuCursor term=reverse cterm=reverse gui=reverse
         endif
         this.title = title
         this.items_dict = items_dict
@@ -71,7 +74,7 @@ export class FilterMenuPopup
             this._CommonProps(options.bordercharsp, pos_top, 1, minwidth, maxwidth)->extend({
             title: $" ({items_count}/{items_count}) {this.title} ",
             }))
-        matchaddpos('Cursor', [[1, 3]], 10, -1, {window: this.idp})
+        matchaddpos('DevdocMenuCursor', [[1, 3]], 10, -1, {window: this.idp})
 
         this.id = popup_create(this._Printify(this.filtered_items),
             this._CommonProps(options.borderchars, pos_top + 3, height, minwidth, maxwidth)->extend({
@@ -124,7 +127,7 @@ export class FilterMenuPopup
                     # this.idp->popup_settext($'{options.promptchar} {this.prompt}{options.cursorchar}')
                     this.idp->popup_settext($'{options.promptchar} {this.prompt} ')
                     this.idp->clearmatches()
-                    matchaddpos('Cursor', [[1, 3 + this.prompt->len()]], 10, -1, {window: this.idp})
+                    matchaddpos('DevdocMenuCursor', [[1, 3 + this.prompt->len()]], 10, -1, {window: this.idp})
 
                     var new_width = id->popup_getpos().core_width
                     if new_width > minwidth
@@ -173,7 +176,7 @@ export class FilterMenuPopup
         if itemsAny->len() > 1
             return itemsAny[0]->mapnew((idx, v) => {
                 return {text: v.text, props: itemsAny[1][idx]->mapnew((_, c) => {
-                    return {col: v.text->byteidx(c) + 1, length: 1, type: 'FilterMenuMatch'}
+                    return {col: v.text->byteidx(c) + 1, length: 1, type: 'DevdocMenuMatch'}
                 })}
             })
         else

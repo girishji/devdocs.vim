@@ -153,11 +153,14 @@ export def LoadDoc(page: dict<any>)
     var curpage = bufnr()->getbufvar('page')
     stack->add({bufnr: bufnr("%"), line: line("."), col: col("."), page: curpage})
 
-    var open_cmd = OpenWinCmd()
-    def Rand(): string
-        return reltime()->reltimestr()->matchstr('\v\.@<=\d+')->slice(0, 3)
-    enddef
-    silent execute $":{open_cmd} $HOME/{page.slug}.{page.path->fnamemodify(':t:r')}.{Rand()}~"
+    var open_cmd: string
+    if get(g:, 'loaded_devdocs_tui', false)
+        open_cmd = 'edit'
+    else
+        open_cmd = OpenWinCmd()
+    endif
+    var randnr = reltime()->reltimestr()->matchstr('\v\.@<=\d+')->slice(0, 3)
+    silent execute $":{open_cmd} $HOME/{page.slug}.{page.path->fnamemodify(':t:r')}.{randnr}~"
 
     # Avoid warning for editing the dummy file twice
     :setl buftype=nofile noswapfile
@@ -169,10 +172,7 @@ export def LoadDoc(page: dict<any>)
     (page.doc.doc)->mapnew((_, v) => v->substitute('[[:cntrl:]]', '', 'g'))->setline(1)
 
     :exe $':{LineNr(page.tag, page.doc)}'
-    :setl ft=devdoc nomod
-    :setl bufhidden=hide
-    :setl nobuflisted
-    :setl noma
+    :setl ft=devdoc nomod bufhidden=hide nobuflisted noma
     :setl listchars=trail:\ ,tab:\ \ 
     :setl fillchars=eob:\ 
 
