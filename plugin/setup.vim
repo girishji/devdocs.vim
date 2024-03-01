@@ -34,6 +34,7 @@ enddef
 :command DevdocsInstall install.Install()
 :command DevdocsUninstall uninstall.Uninstall()
 :command DevdocsFind find.Find()
+:command DevdocsTagStack devdoc.DevdocTagStack()
 
 def! g:DevdocsOptionsSet(opt: dict<any>)
     options.opt->extend(opt)

@@ -68,17 +68,19 @@ export def Syntax(doc: dict<any>)
         endif
     endfor
     # syntax highlight code blocks
-    for lang in doc.cblangs
-        var cmd = $':syn region devdocCodeBlock matchgroup=helpIgnore start=" >{lang}$" start="^>{lang}$" end="^<$" end=" <$"'
-        if missing->index(lang) == -1
-            exe $':syntax include @LangPod_{lang} {$VIMRUNTIME}/syntax/{lang}.vim'
-            cmd = $'{cmd} contains=@LangPod_{lang}'
-        endif
-        if has("conceal")
-            :exe $'{cmd} concealends'
-            :setl conceallevel=2
-        else
-            :exe $'{cmd}'
-        endif
-    endfor
+    if doc.cblangs->type() != v:t_dict
+        for lang in doc.cblangs
+            var cmd = $':syn region devdocCodeBlock matchgroup=helpIgnore start=" >{lang}$" start="^>{lang}$" end="^<$" end=" <$"'
+            if missing->index(lang) == -1
+                exe $':syntax include @LangPod_{lang} {$VIMRUNTIME}/syntax/{lang}.vim'
+                cmd = $'{cmd} contains=@LangPod_{lang}'
+            endif
+            if has("conceal")
+                :exe $'{cmd} concealends'
+                :setl conceallevel=2
+            else
+                :exe $'{cmd}'
+            endif
+        endfor
+    endif
 enddef

@@ -59,12 +59,14 @@ def LineNr(tag: string, doc: dict<any>): number
     if doc.tag->type() == v:t_dict
         return 1
     endif
-    for t in doc.tag
-        var tstr = t[0]->trim()
-        if tstr == tag || (tstr[0] == '#' && tstr->slice(1) == tag)
-            return t[1]
-        endif
-    endfor
+    if doc.tag->type() != v:t_dict
+        for t in doc.tag
+            var tstr = t[0]->trim()
+            if tstr == tag || (tstr[0] == '#' && tstr->slice(1) == tag)
+                return t[1]
+            endif
+        endfor
+    endif
     return 1
 enddef
 
@@ -97,16 +99,24 @@ def LoadLocation(page: dict<any>): bool
     if !path2bufnr->has_key(fpath)
         return false
     endif
-    if path2bufnr[fpath] != bufnr('%')
+    if path2bufnr[fpath] == bufnr('%')
+        var curpage = bufnr()->getbufvar('page')
+        var linenr = LineNr(page.tag, curpage.doc)
+        if linenr != line('.')
+            stack->add({bufnr: bufnr('%'), line: line('.'), col: col('.')})
+            :exe $':{linenr}'
+        endif
+    else
+        stack->add({bufnr: bufnr('%'), line: line('.'), col: col('.')})
         var open_cmd = OpenWinCmd()
-        silent execute $":{open_cmd}"
+        silent execute $':{open_cmd}'
         execute $':{path2bufnr[fpath]}b'
         :setl bufhidden=hide
         :setl nobuflisted
         :setl noma
+        var curpage = bufnr()->getbufvar('page')
+        :exe $':{LineNr(page.tag, curpage.doc)}'
     endif
-    var curpage = bufnr()->getbufvar('page')
-    :exe $':{LineNr(page.tag, curpage.doc)}'
     return true
 enddef
 
@@ -141,22 +151,40 @@ export def LoadPage(fpath: string, slug: string, absolute_path: bool = false)
         }, opts == null_string ? null_dict : {DEVDOC_OPTS: opts})
 enddef
 
-export def GetPage()
+def Hotlink(): list<any>
     var curline = line('.')
     var curcol = col('.')
     var curpage = bufnr()->getbufvar('page')
-    for lnk in curpage.doc.link
-        if lnk[2] == curline && curcol <= lnk[4] && curcol >= lnk[3]
-            LoadPage(lnk[1], curpage.slug)
-            return
-            # echoerr 'devdoc: link target not found'
-        endif
-    endfor
+    if curpage.doc.link->type() != v:t_dict
+        for lnk in curpage.doc.link
+            if lnk[2] == curline && curcol <= lnk[4] && curcol >= lnk[3]
+                return lnk
+            endif
+        endfor
+    endif
+    return []
+enddef
+
+export def GetPage()
+    var link = Hotlink()
+    if !link->empty()
+        var curpage = bufnr()->getbufvar('page')
+        LoadPage(link[1], curpage.slug)
+    endif
+enddef
+
+def DisplayLinkTarget()
+    var lnk = Hotlink()
+    if !lnk->empty()
+        :echo lnk[1]
+    else
+        :echo ''
+    endif
 enddef
 
 export def LoadDoc(page: dict<any>)
     var curpage = bufnr()->getbufvar('page')
-    stack->add({bufnr: bufnr("%"), line: line("."), col: col("."), page: curpage})
+    stack->add({bufnr: bufnr("%"), line: line("."), col: col(".")})
 
     var open_cmd: string
     if get(g:, 'loaded_devdocs_tui', false)
@@ -177,6 +205,7 @@ export def LoadDoc(page: dict<any>)
     (page.doc.doc)->mapnew((_, v) => v->substitute('[[:cntrl:]]', '', 'g'))->setline(1)
 
     :exe $':{LineNr(page.tag, page.doc)}'
+    :au filetype devdoc au CursorMoved <buffer> DisplayLinkTarget()
     :setl ft=devdoc nomod bufhidden=hide nobuflisted noma
     :setl listchars=trail:\ ,tab:\ \ 
     :setl fillchars=eob:\ 
@@ -189,7 +218,12 @@ enddef
 export def PopPage()
     if !stack->empty()
         var entry = stack->remove(-1)
+        echom 'pop ' entry.bufnr
         exec $':{entry.bufnr}b'
         cursor(entry.line, entry.col)
     endif
+enddef
+
+export def DevdocTagStack()
+    echom stack
 enddef
