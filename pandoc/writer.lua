@@ -59,7 +59,7 @@ local singlequote = options.extended_ascii and { "'", "'"} or {"'", "'"}
 
 local function set_columns(opts)
     if opts.columns == pandoc.WriterOptions({}).columns then
-        -- 'columns' is not set in command line
+        -- 'columns' is not specified in command line
         opts.columns = TEXT_WIDTH
         if not options.use_terminal_width then
             return
@@ -258,6 +258,58 @@ local function scrub_markup(doc)
         startl = endl + 1
         endl = doc:find('\n', startl, true)
     end
+
+    local function verify(tgt)
+        local s, e
+        local init = 1
+        while init <= #tgt and tgt:find('#', init, true) do
+            s, e = tgt:find('#', 1, true)
+            init = s + 1
+        end
+        local function basename(s)
+            -- https://stackoverflow.com/questions/5243179/what-is-the-neatest-way-to-split-out-a-path-name-into-its-components-in-lua
+            return string.match(s, "(.-)([^\\/]-%.?([^%.\\/]*))$")
+        end
+        if not s or s ~= 1 then
+            -- remote file, check if it exists
+            local fname = (not s) and tgt or tgt:sub(1, s - 1)
+            -- assume there is only one input file, and unix file separator
+            local path_separator = package.config:sub(1,1)  -- platform independent
+            local fpath = basename(PANDOC_STATE.input_files[1]) .. path_separator .. fname .. '.html'
+            if not io.open(fpath, 'r') then
+                table.insert(error, 'target file not found {' .. fname .. '.html' .. '}')
+                return false
+            end
+        end
+        if s then
+            if s > 1 then
+                -- tags can have file component that points to the current file itself
+                local _, fname = basename(PANDOC_STATE.input_files[1])
+                if fname ~= (tgt:sub(1, s - 1) .. '.html') then
+                    -- check tag exists only if it is in local file (otherwise need to transpile another file)
+                    return true
+                end
+            end
+            local ltag = tgt:sub(s + 1)
+            if not ltag or ltag == '' then
+                return true
+            end
+            local found = false
+            for _, tagged in ipairs(tag) do
+                if tagged[1] == ltag then
+                    found = true
+                end
+            end
+            if not found then
+                -- tags included within html table rows are removed, and will show up
+                --   as errors here. manually verify that errors refer to tags within html tables.
+                table.insert(error, 'target not found {' .. tgt .. '}')
+                return false
+            end
+        end
+        return true
+    end
+
     local function link_add_target()
         local function target(src)
             for lnk, tgt in pairs(links) do
@@ -271,12 +323,13 @@ local function scrub_markup(doc)
         local items = {}
         for _, lnk in ipairs(mitems.link) do
             local tgt = target(lnk[4])
-            if tgt then
+            if tgt and verify(tgt) then
                 table.insert(items, {lnk[4], tgt, lnk[1], lnk[2], lnk[3]})
             end
         end
         return items
     end
+
     local res = {}
     res.doc, res.error, res.tag, res.codeblock, res.blockquote, res.defn,
         res.link, res.strong, res.emph, res.code, res.underline,
@@ -324,6 +377,10 @@ end
 Writer.Block.Div = function(el, opts)
     local doc = Writer.Blocks(el.content)
     if el.classes:includes("section") then
+        local tagstr, secstr
+        if el.attr.identifier ~= nil and el.attr.identifier ~= '' then
+            tagstr = lblock(nowrap(concat{"::: ", el.attr.identifier}), opts.columns)
+        end
         if el.attr and el.attr.attributes and el.attr.attributes.number then
             local section = el.attr.attributes.number
             local fragments = string_split(section, '[^.]+')
@@ -343,15 +400,13 @@ Writer.Block.Div = function(el, opts)
                 end
             end
             if #fragments > 1 then
-                return sec and nest(concat{sec, cr, doc}, indent) or nest(doc, indent)
+                secstr = sec and nest(concat{sec, cr, doc}, indent) or nest(doc, indent)
             else
-                return sec and concat{sec, cr, doc} or doc
+                secstr = sec and concat{sec, cr, doc} or doc
             end
-        else
-            if el.attr.identifier ~= nil and el.attr.identifier ~= '' then
-                return concat{lblock(nowrap(concat{"::: ", el.attr.identifier}), opts.columns), cr, doc, cr }
-            end
+            return tagstr and concat{tagstr, cr, secstr} or secstr
         end
+        return tagstr and concat{tagstr, cr, doc} or doc
     end
     return doc
 end

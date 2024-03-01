@@ -97,15 +97,16 @@ def LoadLocation(page: dict<any>): bool
     if !path2bufnr->has_key(fpath)
         return false
     endif
-    if path2bufnr[fpath] == bufnr('%')
-        return true
+    if path2bufnr[fpath] != bufnr('%')
+        var open_cmd = OpenWinCmd()
+        silent execute $":{open_cmd}"
+        execute $':{path2bufnr[fpath]}b'
+        :setl bufhidden=hide
+        :setl nobuflisted
+        :setl noma
     endif
-    var open_cmd = OpenWinCmd()
-    silent execute $":{open_cmd}"
-    execute $':{path2bufnr[fpath]}b'
-    :setl bufhidden=hide
-    :setl nobuflisted
-    :setl noma
+    var curpage = bufnr()->getbufvar('page')
+    :exe $':{LineNr(page.tag, curpage.doc)}'
     return true
 enddef
 
@@ -131,6 +132,10 @@ export def LoadPage(fpath: string, slug: string, absolute_path: bool = false)
                 :echohl ErrorMsg | echoerr $'Pandoc failed ({v:exception})' | echohl None
                 return
             endtry
+            # tags removed from html table rows show up as errors (do not echo, except for debug)
+            # if !doc.error->empty()
+            #     echoerr doc.error
+            # endif
             page.doc = doc
             LoadDoc(page)
         }, opts == null_string ? null_dict : {DEVDOC_OPTS: opts})
@@ -144,9 +149,9 @@ export def GetPage()
         if lnk[2] == curline && curcol <= lnk[4] && curcol >= lnk[3]
             LoadPage(lnk[1], curpage.slug)
             return
+            # echoerr 'devdoc: link target not found'
         endif
     endfor
-    echoerr 'devdoc: link target not found'
 enddef
 
 export def LoadDoc(page: dict<any>)
