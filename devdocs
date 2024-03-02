@@ -2,6 +2,13 @@
 
 # Script for using VIM as a TUI for devdocs
 
+vimversion=`vim -e -T dumb --cmd 'exe "set t_cm=\<C-M>"|echo v:version|quit' | tr -d '\015' `
+vimversion="${vimversion//[$'\t\r\n ']}"
+if [ "$vimversion" -lt 901 ]; then
+    echo 'Requires at least Vim 9.1'
+    exit 1
+fi
+
 vim --cmd 'let no_plugin_maps = 1' --cmd 'let g:loaded_devdocs_tui = v:true' \
     -c 'runtime! plugin/setup.vim' \
     -c 'setl listchars=trail:\ ,tab:\ \ |setl fillchars=eob:\ ' \

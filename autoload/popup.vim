@@ -70,7 +70,6 @@ export class FilterMenuPopup
         var ignore_input_wtf = [128, 253, 100]
 
         this.idp = popup_create([$'{options.promptchar}  '],
-            # this._CommonProps(options.bordercharsp, pos_top, 1, width, width)->extend({
             this._CommonProps(options.bordercharsp, pos_top, 1, minwidth, maxwidth)->extend({
             title: $" ({items_count}/{items_count}) {this.title} ",
             }))
@@ -154,12 +153,12 @@ export class FilterMenuPopup
             }
         }))
         win_execute(this.id, "setl nu cursorline cursorlineopt=both")
-        var widthp = this.id->popup_getpos().scrollbar ? minwidth + 1 : minwidth
-        popup_move(this.idp, {minwidth: widthp, maxwidth: widthp})
+        var pos = this.id->popup_getpos()
+        var widthp = pos.width + (pos.scrollbar ? 1 : 0)
+        popup_move(this.idp, {minwidth: widthp})
         if Setup != null_function
             Setup(this.id)
         endif
-        this.id = this.id
     enddef
 
     def _GetItems(lst: list<dict<any>>, ctx: string): list<any>

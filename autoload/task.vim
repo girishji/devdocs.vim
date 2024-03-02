@@ -12,8 +12,6 @@ export class AsyncCmd
     def new(cmd: any, CallbackFn: func(string), env: dict<any> = null_dict)
         # ch_logfile('/tmp/channellog', 'w')
         # ch_log('BuildItemsList call')
-        var start = reltime()
-        var items = []
         this.Stop('kill')
         this.job = job_start(cmd, {
             close_cb: (chan: channel) => {

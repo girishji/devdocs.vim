@@ -1,7 +1,6 @@
 vim9script
 
 import './popup.vim'
-import './task.vim'
 import './options.vim'
 if get(g:, 'loaded_devdocs_tui', false)
     import './devdoc.vim'

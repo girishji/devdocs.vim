@@ -10,13 +10,13 @@ var properties = {
     DevdocCode: 'CursorLine',
     DevdocUnderline: 'Underlined',
     DevdocSection: 'Comment',
-    DevdocDefn: 'Statement',
-    DevdocH1: 'Identifier',
-    DevdocH2: 'Identifier',
-    DevdocH3: 'Identifier',
-    DevdocH4: 'Identifier',
-    DevdocH5: 'Identifier',
-    DevdocH6: 'Identifier',
+    DevdocDefn: 'PreProc',
+    DevdocH1: 'PreProc',
+    DevdocH2: 'PreProc',
+    DevdocH3: 'PreProc',
+    DevdocH4: 'PreProc',
+    DevdocH5: 'PreProc',
+    DevdocH6: 'PreProc',
 }
 
 export def Syntax(doc: dict<any>)
