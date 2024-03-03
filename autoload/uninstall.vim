@@ -23,7 +23,7 @@ export def Uninstall()
             return [lst, matches]
         endif
     enddef
-    popup.FilterMenuPopup.new('Uninstall',
+    popup.FilterMenu.new('Uninstall',
         items,
         (res, key) => {
             var slugdir = $'{dir}/{res.text}'

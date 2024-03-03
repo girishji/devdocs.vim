@@ -100,7 +100,7 @@ def ShowMenu(items: list<dict<any>>)
             return [lst, matches]
         endif
     enddef
-    popup.FilterMenuPopup.new('Devdocs Install',
+    popup.FilterMenu.new('Devdocs Install',
         items,
         (res, key) => {
             FetchSlug(res.data)
@@ -123,5 +123,6 @@ export def Install()
                 return {text: v.slug, data: v}
             })
             ShowMenu(items)
+            feedkeys("\<bs>", "nt")  # workaround for https://github.com/vim/vim/issues/13932
         })
 enddef

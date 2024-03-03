@@ -1,0 +1,5 @@
+to generate json text that is fed into Vim:
+pandoc -t path-to/devdocs.vim/pandoc/writer.lua file.html
+
+to generate native AST
+pandoc -t native file.html

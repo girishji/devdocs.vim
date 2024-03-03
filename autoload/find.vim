@@ -20,7 +20,7 @@ def ShowMenu(items: list<dict<any>>)
             return [lst, matches]
         endif
     enddef
-    popup.FilterMenuPopup.new('Devdocs',
+    popup.FilterMenu.new('Devdocs',
         items,
         (res, key) => {
             devdoc.LoadPage(res.data.path, res.slug, true)

@@ -184,7 +184,9 @@ enddef
 
 export def LoadDoc(page: dict<any>)
     var curpage = bufnr()->getbufvar('page')
-    stack->add({bufnr: bufnr("%"), line: line("."), col: col(".")})
+    if &filetype == 'devdoc'
+        stack->add({bufnr: bufnr("%"), line: line("."), col: col(".")})
+    endif
 
     var open_cmd: string
     if get(g:, 'loaded_devdocs_tui', false)

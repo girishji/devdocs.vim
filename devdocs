@@ -9,7 +9,7 @@ if [ "$vimversion" -lt 901 ]; then
     exit 1
 fi
 
-vim --cmd 'let no_plugin_maps = 1' --cmd 'let g:loaded_devdocs_tui = v:true' \
+${VIMCMD:-vim} --cmd 'let no_plugin_maps = 1' --cmd 'let g:loaded_devdocs_tui = v:true' \
     -c 'runtime! plugin/setup.vim' \
     -c 'setl listchars=trail:\ ,tab:\ \ |setl fillchars=eob:\ ' \
     -c 'set statusline=%<\%{\"\ <esc>\ dismiss\ \|\ ^I\ install\ \|\ ^U\ uninstall\ \|\ ^F\ find\ \|\ /?\ search\ \|\ q\ quit\"}%=%-14.(%l,%c%V%)\ %P' \
