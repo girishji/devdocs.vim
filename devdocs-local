@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Script for using VIM as a TUI for devdocs
+
+SCRIPT_PATH="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
+
+${VIMCMD:=vim} -u DEFAULTS -S <(cat <<EOF
+    vim9script
+    g:loaded_devdocs_tui = true
+    :set shortmess=I
+    :nnoremap <silent> q :qa!<CR>
+    :setl buftype=nofile noswapfile
+    :setl fdc=0 nofen nonu nornu bufhidden=hide nobuflisted noma
+    :setl listchars=trail:\ ,tab:\ \ 
+    :setl fillchars=eob:\ 
+    :colorscheme ${COLORSCHEME:=default}
+    :source ${SCRIPT_PATH}/plugin/setup.vim
+    :autocmd filetype devdoc nnoremap <buffer> <silent> q :qa!<CR>
+            \| nnoremap <buffer> <silent> <c-f> <cmd>DevdocsFind<cr>
+            \| nnoremap <buffer> <silent> <c-i> <cmd>DevdocsInstall<cr>
+            \| nnoremap <buffer> <silent> <c-u> <cmd>DevdocsUninstall<cr>
+    var dir = g:DevdocsOptionsGet().data_dir->expand()->fnameescape()
+    var installed = false
+    if dir->isdirectory()
+        var slugs = dir->readdir((v) => v !~ '\.tmp$')
+        if !slugs->empty()
+            :DevdocsFind
+            installed = true
+        endif
+    endif
+    if !installed
+        :DevdocsInstall
+    endif
+    # box cursor
+    :autocmd VimEnter,VimResume * silent execute '!echo -ne "\e[2 q"' | redraw!
+    :set ls=2
+    :set statusline=%<\%{\"\ <esc>\ dismiss\ \|\ ^I\ install\ \|\ ^U\ uninstall\ \|\ ^F\ find\ \|\ /?\ search\ \|\ q\ quit\"}%=%-14.(%l,%c%V%)\ %P
+    if '$HOME/.devdocs.vim'->filereadable()
+        :source $HOME/.devdocs.vim
+    endif
+    :hi default link DevdocMenuMatch String
+    :hi default DevdocMenuCursor term=reverse cterm=reverse gui=reverse
+    :hi clear statusline
+    :hi clear statuslinenc
+EOF
+)

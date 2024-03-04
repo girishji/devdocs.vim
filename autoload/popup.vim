@@ -3,7 +3,7 @@ vim9script
 # some chunks shamelessly ripped from habamax
 #   https://github.com/habamax/.vim/blob/master/autoload/popup.vim
 
-var options = {
+export var options = {
     borderchars: ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
     bordercharsp: ['─', '│', '═', '│', '┌', '┐', '╡', '╞'],
     borderhighlight: hlexists('PopupBorderHighlight') ? ['PopupBorderHighlight'] : [],
