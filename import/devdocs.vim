@@ -1,10 +1,9 @@
 vim9script
 
-import autoload 'find.vim'
-import autoload 'install.vim'
-import autoload 'uninstall.vim'
-import autoload 'options.vim'
-import autoload 'popup.vim'
+import autoload '../autoload/devdocs/find.vim'
+import autoload '../autoload/devdocs/install.vim'
+import autoload '../autoload/devdocs/uninstall.vim'
+import autoload '../autoload/devdocs/options.vim'
 
 export def Find()
     find.Find()
@@ -29,4 +28,3 @@ enddef
 export def PopupOptionsSet(opt: dict<any>)
     popup.options->extend(opt)
 enddef
-

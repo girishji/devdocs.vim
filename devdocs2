@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Script for using VIM as a TUI for devdocs
+# Script for using VIM as a TUI for devdocs.
+# Does not source ~/.vimrc, instead use ~/.devdocs.vim
 
 SCRIPT_PATH="$(cd -- "$(dirname "$0")" >/dev/null 2>&1; pwd -P)"
 

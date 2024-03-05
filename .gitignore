@@ -1,7 +1,7 @@
 # Vim
 *.swp
 
-.DS_store
+.DS_Store
 
 # Compiled Lua sources
 luac.out

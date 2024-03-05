@@ -113,15 +113,15 @@ export class FilterMenu
             filter: (id, key) => {
                 items_count = this.items_dict->len()
                 if key == "\<esc>"
-                    popup_close(id, -1)
                     popup_close(this.idp, -1)
+                    popup_close(id, -1)
                     if Cleanup != null_function
                         Cleanup()
                     endif
                 elseif ["\<cr>", "\<C-j>", "\<C-v>", "\<C-t>", "\<C-o>"]->index(key) > -1
                         && this.filtered_items[0]->len() > 0 && items_count > 0
-                    popup_close(id, {idx: getcurpos(id)[1], key: key})
                     popup_close(this.idp, -1)
+                    popup_close(id, {idx: getcurpos(id)[1], key: key})
                 elseif key == "\<Right>" || key == "\<PageDown>"
                     win_execute(id, 'normal! ' .. "\<C-d>")
                 elseif key == "\<Left>" || key == "\<PageUp>"

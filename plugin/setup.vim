@@ -6,19 +6,34 @@ vim9script
 
 g:loaded_devdocs = true
 
-if get(g:, 'loaded_devdocs_tui', false)
-    import '../autoload/install.vim'
-    import '../autoload/uninstall.vim'
-    import '../autoload/find.vim'
-    import '../autoload/devdoc.vim'
-    import '../autoload/options.vim'
-else
-    import autoload 'install.vim'
-    import autoload 'uninstall.vim'
-    import autoload 'find.vim'
-    import autoload 'devdoc.vim'
-    import autoload 'options.vim'
-endif
+import autoload '../autoload/devdocs/find.vim'
+import autoload '../autoload/devdocs/install.vim'
+import autoload '../autoload/devdocs/uninstall.vim'
+import autoload '../autoload/devdocs/options.vim'
+
+# export def Find()
+#     find.Find()
+# enddef
+
+# export def Install()
+#     install.Install()
+# enddef
+
+# export def Uninstall()
+#     uninstall.Uninstall()
+# enddef
+
+# export def OptionsSet(opt: dict<any>)
+#     options.opt->extend(opt)
+# enddef
+
+# export def OptionsGet(): dict<any>
+#     return options.opt->deepcopy()
+# enddef
+
+# export def PopupOptionsSet(opt: dict<any>)
+#     popup.options->extend(opt)
+# enddef
 
 def Keymaps()
     if maparg('q', 'n')->empty()
@@ -43,3 +58,7 @@ enddef
 def! g:DevdocsOptionsGet(): dict<any>
     return options.opt->deepcopy()
 enddef
+
+# def! PopupOptionsSet(opt: dict<any>)
+#     popup.options->extend(opt)
+# enddef
