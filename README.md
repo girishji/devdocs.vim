@@ -2,23 +2,25 @@
 <h1 align="center"> Devdocs </h1>
 
 <h4 align="center"> Browse API documentation from <a href="https://devdocs.io">devdocs.io</a> inside Vim.</h4>
-<h4 align="center"> (Navigate links, fuzzy find API keywords, search & copy, TUI, and more!)</h4>
+
+<h5 align="center">
+  <a href="#navigate-links">Navigate Links</a> •
+  <a href="#fuzzy-search-documentation-trees">Fuzzy Find API</a> •
+  <a href="#interact">Search & Copy</a> •
+  <a href="#tui">TUI</a>
+</h5>
 
 <p align="center">
   <a href="#usage">Usage</a> •
   <a href="#requirements">Requirements</a> •
   <a href="#installation">Installation</a> •
-  <a href="#configuration">Configuration</a> •
+  <a href="#configuration">Configuration</a>
 </p>
 
 ![Demo](data/demo.gif)
 
 
 ## Usage
-
-### Navigate Links
-
-Links are underlined. Place the cursor on a link and type `<C-]>` to follow the link. `<C-t>` to go back.
 
 ### Install New Documentation
 
@@ -35,7 +37,7 @@ You can change the installation directory. See configuration below.
 
 Use `:DevdocsUninstall` command.
 
-### Search Documentation Tree
+### Fuzzy Search Documentation Trees
 
 Use `:DevdocsFind` command (or map it to your favorite shortcut) to fuzzy find API keywords.
 Use `<Tab>` and `<S-Tab>` to navigate.
@@ -43,6 +45,14 @@ Use `<Tab>` and `<S-Tab>` to navigate.
 Documentation file opens in a new split window (just like Vim's help
 files). Height of this window can be configured. Window can be split vertically
 and syntax highlighting can be changed.
+
+### Navigate Links
+
+Links are underlined. Place the cursor on a link and type `<C-]>` to follow the link. `<C-t>` to go back.
+
+### Interact
+
+Search and copy using familiar Vim commands. There are no markup artifacts to clean up.
 
 ### TUI
 
