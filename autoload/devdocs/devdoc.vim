@@ -109,7 +109,9 @@ def LoadLocation(page: dict<any>): bool
     else
         stack->add({bufnr: bufnr('%'), line: line('.'), col: col('.')})
         var open_cmd = OpenWinCmd()
-        silent execute $':{open_cmd}'
+        if open_cmd != 'edit'
+            silent execute $':{open_cmd}'
+        endif
         execute $':{path2bufnr[fpath]}b'
         :setl bufhidden=hide
         :setl nobuflisted

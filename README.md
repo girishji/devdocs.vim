@@ -40,12 +40,13 @@ Use the `:DevdocsFind` command, or map it to your preferred shortcut, for a
 fuzzy search of API keywords. Use `<Tab>` and `<S-Tab>` for navigation.
 
 The documentation file opens in a new split window, similar to Vim's help
-files. You can configure the height of this window.
+files. You can configure the height of this window. Type `q` to quit the window.
 
 ### Navigate Links
 
 Links are underlined. Place the cursor on a link and type `<C-]>` (Control-]) or `K` to follow the
-link. `<C-t>` to go back. These mappings mirror Vim tags.
+link. `<C-t>` to go back. These mappings mirror Vim tags. Link targets are
+echoed on the command line when the cursor is on the link.
 
 ### Interact
 
@@ -164,7 +165,7 @@ format: {
 Options are set using `g:DevdocsOptionsSet(dict)`.
 
 For example, use the following configuration to generate documents with fixed
-80 char width (instead of full terminal width) and to set window height to 30
+80 characters width (instead of full terminal width) and to set window height to 30
 lines.
 
 ```
@@ -172,8 +173,8 @@ vim9script
 g:DevdocsOptionsSet({format: {use_terminal_width: false}, height: 30})
 ```
 
-If you installed documentation for multiple languages you can set `slugs` list to limit search to specific
-documentation trees only. Further, you can also use the `filetype` event of `autocmd` to set a
+If you installed documentation for multiple languages you can set `slugs` list to limit the fuzzy search to specific
+documentation trees. Further, you can use the `filetype` event of `autocmd` to set a
 list of slugs based on the filetype you are working on.
 
 ```
@@ -189,7 +190,7 @@ Group|Default
 ------|----
 `DevdocCodeblock`|`Special`
 `DevdocBlockquote`|`None`
-`DevdocLink`|`SpellRare`
+`DevdocLink`|`Underlined`
 `DevdocCode`|`String`
 `DevdocUnderline`|`Underlined`
 `DevdocSection`|`Comment`

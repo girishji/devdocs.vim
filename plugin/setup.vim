@@ -10,6 +10,7 @@ import autoload '../autoload/devdocs/find.vim'
 import autoload '../autoload/devdocs/install.vim'
 import autoload '../autoload/devdocs/uninstall.vim'
 import autoload '../autoload/devdocs/options.vim'
+import autoload '../autoload/devdocs/devdoc.vim'
 
 def Keymaps()
     if maparg('q', 'n')->empty()
