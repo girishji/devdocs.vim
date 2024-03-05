@@ -24,45 +24,42 @@
 
 ### Install New Documentation
 
-`:DevdocsInstall` command opens a popup window to download new documentation trees. It may take a few seconds to
-gather all the slugs (document tree metadata) from [devdocs.io](https://devdocs.io)).
+The `:DevdocsInstall` command opens a popup window for downloading new documentation trees. Please allow a few seconds for the gathering of all slugs (document tree metadata) from [devdocs.io](https://devdocs.io).
 
-Navigate using `<Tab>` and `<S-Tab>` to navigate or type in the window to fuzzy
-search. Depending on the size of documentation downloading may take up to a
-minute.
+Navigate through the choices using `<Tab>` and `<S-Tab>`, or simply type in the window for fuzzy searching. Depending on the documentation size, the downloading process may take up to a minute.
 
-You can change the installation directory. See below.
+Installation directory can be changed, as explained below.
 
 ### Uninstall Documentation
 
-Use `:DevdocsUninstall` command to uninstall documentation trees.
+To remove documentation trees, use the `:DevdocsUninstall` command.
 
 ### Fuzzy Search Documentation Trees
 
-Use `:DevdocsFind` command (or map it to your favorite shortcut) to fuzzy find API keywords.
-Use `<Tab>` and `<S-Tab>` to navigate.
+Use the `:DevdocsFind` command, or map it to your preferred shortcut, for a
+fuzzy search of API keywords. Use `<Tab>` and `<S-Tab>` for navigation.
 
-Documentation file opens in a new split window (just like Vim's help
-files). Height of this window can be configured. Window can be split vertically.
+The documentation file opens in a new split window, similar to Vim's help
+files. You can configure the height of this window.
 
 ### Navigate Links
 
 Links are underlined. Place the cursor on a link and type `<C-]>` (Control-]) or `K` to follow the
-link. `<C-t>` to go back. These mappings are similar to Vim tags.
+link. `<C-t>` to go back. These mappings mirror Vim tags.
 
 ### Interact
 
-Search and copy using familiar Vim commands. There are no markup artifacts to clean up.
+Search and copy using familiar Vim commands. There are no markup artifacts that require cleanup.
 
 ### TUI
 
-If you are already a Vim user, you can use the provided shell script `devdocs` to view documents in full window.
+If you are already a Vim user, use the provided shell script `devdocs` to view documents in full window.
 
 If you are _not_ a regular Vim user you can still use Vim as a pager. Clone
-this repository anywhere and use the provided script `devdocs2`. It will not
-load the `.vimrc` file, but you can customize using `~/.devdocs.vim` file.
+this repository anywhere and use the provided script `devdocs2`.
+It avoids loading the `~/.vimrc` file, but customization is possible through the `~/.devdocs.vim` file.
 
-To use custom installation of Vim set `$VIMCMD` environment variable to the path of Vim executable.
+To use custom installation of Vim, set the `$VIMCMD` environment variable to the path of Vim executable.
 
 ## Requirements
 
