@@ -3,12 +3,12 @@
 
 <h4 align="center"> Browse API documentation from <a href="https://devdocs.io">devdocs.io</a> inside Vim.</h4>
 
-<h5 align="center">
+<h4 align="center">
   <a href="#navigate-links">Navigate Links</a> •
   <a href="#fuzzy-search-documentation-trees">Fuzzy Find API</a> •
   <a href="#interact">Search & Copy</a> •
   <a href="#tui">TUI</a>
-</h5>
+</h4>
 
 <p align="center">
   <a href="#usage">Usage</a> •
@@ -24,18 +24,18 @@
 
 ### Install New Documentation
 
-`:DevdocsInstall` command opens a popup window. It may take a few seconds to
-gather all the slugs (document tree metadata) from [devdocs](https://devdocs.io)) website. Fuzzy search,
-use `<Tab>` and `<S-Tab>` to navigate.
+`:DevdocsInstall` command opens a popup window to download new documentation trees. It may take a few seconds to
+gather all the slugs (document tree metadata) from [devdocs.io](https://devdocs.io)).
 
-Depending on the size of documentation, this may take up to a minute to
-download. Be patient.
+Navigate using `<Tab>` and `<S-Tab>` to navigate or type in the window to fuzzy
+search. Depending on the size of documentation downloading may take up to a
+minute.
 
-You can change the installation directory. See configuration below.
+You can change the installation directory. See below.
 
 ### Uninstall Documentation
 
-Use `:DevdocsUninstall` command.
+Use `:DevdocsUninstall` command to uninstall documentation trees.
 
 ### Fuzzy Search Documentation Trees
 
@@ -43,12 +43,12 @@ Use `:DevdocsFind` command (or map it to your favorite shortcut) to fuzzy find A
 Use `<Tab>` and `<S-Tab>` to navigate.
 
 Documentation file opens in a new split window (just like Vim's help
-files). Height of this window can be configured. Window can be split vertically
-and syntax highlighting can be changed.
+files). Height of this window can be configured. Window can be split vertically.
 
 ### Navigate Links
 
-Links are underlined. Place the cursor on a link and type `<C-]>` to follow the link. `<C-t>` to go back.
+Links are underlined. Place the cursor on a link and type `<C-]>` (Control-]) or `K` to follow the
+link. `<C-t>` to go back. These mappings are similar to Vim tags.
 
 ### Interact
 
@@ -56,9 +56,11 @@ Search and copy using familiar Vim commands. There are no markup artifacts to cl
 
 ### TUI
 
-If you are already a Vim user, you can use the provided shell script `devdocs` to view documents.
+If you are already a Vim user, you can use the provided shell script `devdocs` to view documents in full window.
 
-If you are _not_ a regular Vim user you can still use Vim as a pager. Clone this repository anywhere and use the provided script `devdocs-local`. It will not load the `.vimrc` file, but you can customize using `~/.devdocs.vim` file.
+If you are _not_ a regular Vim user you can still use Vim as a pager. Clone
+this repository anywhere and use the provided script `devdocs2`. It will not
+load the `.vimrc` file, but you can customize using `~/.devdocs.vim` file.
 
 To use custom installation of Vim set `$VIMCMD` environment variable to the path of Vim executable.
 
@@ -112,28 +114,26 @@ Add the following line to your $HOME/.vimrc file.
 packadd devdocs.vim
 ```
 
+Note: If you are going to use `devdocs2` script only, you can clone this
+repository anywhere. It does not use Vim's plugin system.
+
 </details>
 
 ## Configuration
 
-Map keys, set options and change highlight groups.
+Map keys, set options, and change highlight groups.
 
-### Keymap
+### Keymaps
 
-Map keys for quick navigation.
+Map keys as shown (for instance) for quick navigation.
 
 ```
-vim9script
 if exists('g:loaded_devdocs')
-    import 'devdocs.vim'
-    nnoremap <leader>I <scriptcmd>devdocs.Install()<CR>
-    nnoremap <leader>U <scriptcmd>devdocs.Uninstall()<CR>
-    nnoremap <leader>h <scriptcmd>devdocs.Find()<CR>
+    nnoremap <leader>h <cmd>DevdocsFind<CR>
+    nnoremap <leader>I <cmd>DevdocsInstall<CR>
+    nnoremap <leader>U <cmd>DevdocsUninstall<CR>
 endif
 ```
-
-Legacy script users can use the commands `DevdocsInstall`, `DevdocsUninstall`,
-and `DevdocsFind` directly in the keymaps.
 
 ### Options
 
@@ -145,33 +145,14 @@ var opt = {
     pandoc: 'pandoc',                    # pandoc executable path
     height: 20,                          # height of split window in number of lines
     open_mode: 'split',                  # 'split' (horizontal), 'vert' (vertical), and 'tab' for tab edit
-    slugs: [],                           # list of slugs to search (when empty search 'all')
+    slugs: [],                           # list of slugs to search (when empty search 'all', see below)
     format: {}                           # see below
 }
 ```
 
-Options are set using `devdocs.OptionsSet(dict)`, or for legacy script users `g:DevdocsOptionsSet(dict)`.
-
-For example, use only plain ascii characters in tables (if your font is bitmapped) and set window height to 30 lines.
-
-```
-vim9script
-import 'devdocs.vim'
-devdocs.OptionsSet({format: {extended_ascii: false}, height: 30})
-```
-
-If you installed documentation for multiple languages you can set `slugs` list to limit search to specific
-documentation only. You can use the `filetype` event of `autocmd` to set a
-list of slugs based on the filetype you are working on.
-
-```
-vim9script
-import 'devdocs.vim'
-autocmd filetype python devdocs.OptionsSet({slugs: ['python~3.12', 'python~3.11']})
-```
-
-
-`format` is a dictionary passed directly to _pandoc_ to control the output. Pandoc builds a AST out of html files which is then transformed into a Vim suitable format using Lua custom writer. The default values for `format` are as follows:
+`format` (above) is a dictionary passed directly to _pandoc_ to control the
+output. Pandoc builds an AST out of html files which is then transformed using
+Lua custom writer. The default values for `format` are as follows:
 
 ```
 format: {
@@ -181,6 +162,26 @@ format: {
     indent_section: false,     # sections are progressively indented if `true`, otherwise fixed indentation
     fence_codeblock: false     # turn off Vim's syntax highlighting of code block (use `DevdocCodeblock` group instead)
 }
+```
+
+Options are set using `g:DevdocsOptionsSet(dict)`.
+
+For example, use the following configuration to generate documents with fixed
+80 char width (instead of full terminal width) and to set window height to 30
+lines.
+
+```
+vim9script
+g:DevdocsOptionsSet({format: {use_terminal_width: false}, height: 30})
+```
+
+If you installed documentation for multiple languages you can set `slugs` list to limit search to specific
+documentation trees only. Further, you can also use the `filetype` event of `autocmd` to set a
+list of slugs based on the filetype you are working on.
+
+```
+vim9script
+autocmd filetype python g:DevdocsOptionsSet({slugs: ['python~3.12', 'python~3.11']})
 ```
 
 ### Syntax Highlighting
@@ -218,6 +219,6 @@ Group|Default
 `DevdocMenuMatch` highlights the characters during search.
 
 `borderchars` of the popup window and other `:h popup_create-arguments` can be
-configured using `devdocs.PopupOptionsSet(dict)`.
+configured using `g:DevdocsPopupOptionsSet(dict)`.
 
 **Open an issue if you encounter errors.**
