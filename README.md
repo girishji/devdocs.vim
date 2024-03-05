@@ -1,7 +1,7 @@
 
 <h1 align="center"> Devdocs </h1>
 
-<h4 align="center"> Browse API documentation from [devdocs](https://devdocs.io) inside Vim.</h4>
+<h4 align="center"> Browse API documentation from <a href="https://devdocs.io">devdocs.io</a> inside Vim.</h4>
 <h4 align="center"> (Navigate links, fuzzy find API keywords, search & copy, TUI, and more!)</h4>
 
 <p align="center">
@@ -59,7 +59,7 @@ To use custom installation of Vim set `$VIMCMD` environment variable to the path
 
 ## Installation
 
-First, install [pandoc](https://pandoc.org/installing.html).
+Install [pandoc](https://pandoc.org/installing.html).
 
 Install this plugin via [vim-plug](https://github.com/junegunn/vim-plug).
 
