@@ -11,6 +11,7 @@ import autoload '../autoload/devdocs/install.vim'
 import autoload '../autoload/devdocs/uninstall.vim'
 import autoload '../autoload/devdocs/options.vim'
 import autoload '../autoload/devdocs/devdoc.vim'
+import autoload '../autoload/devdocs/popup.vim'
 
 def Keymaps()
     if maparg('q', 'n')->empty()
@@ -36,6 +37,6 @@ def! g:DevdocsOptionsGet(): dict<any>
     return options.opt->deepcopy()
 enddef
 
-def! g:PopupOptionsSet(opt: dict<any>)
+def! g:DevdocsPopupOptionsSet(opt: dict<any>)
     popup.options->extend(opt)
 enddef

@@ -55,6 +55,9 @@
 #   Hide                            Hide the subsequent commands from the output
 #   Show                            Show the subsequent commands in the output
 
+# Disable autocompletion plugins
+# colorscheme dracula
+
 Output demo.gif
 
 Set Margin 10
@@ -63,34 +66,64 @@ Set BorderRadius 10
 Set Padding 10
 
 Set TypingSpeed 200ms
-Set FontSize 20
+Set FontSize 16
 Set Width 1000
 Set Height 650
 Set Shell "zsh"
 
-Type "vi" Sleep 1s Enter
+Type "vi -n" Sleep 2s Enter
 
-Type "iDEMO OF DEVDOCS!"
-Enter Enter
-Sleep 1s
-
-Type "* Download and install some documentation"
-Enter Escape
-Sleep 2s
-
-Space
-Type "I"
-Sleep 3s
+Type "iAGENDA" Enter Escape Sleep 1s
+Type "o* Download and install document tree" Enter Escape Sleep 2s
+Space Type "I"
+Sleep 4s
 Type "pytho"
-Tab 6
+Tab 3
+Sleep 2
 Enter
-Sleep 5s
+Sleep 7s
 
+Type "o* Browse document" Enter Escape Sleep 2s
+Space Type "h"
+Sleep 3s
+Type "iter"
+Sleep 2
+Tab
+Sleep 2
+Enter
+Sleep 3s
+PageDown Sleep 2
+PageDown Sleep 2
+PageDown Sleep 2
+PageDown Sleep 2
+PageDown Sleep 2
+PageDown Sleep 2
+PageDown Sleep 2
+PageDown Sleep 2
+PageDown Sleep 2
 
-# Require echo Set Shell "bash" Set FontSize 32
-# Set Width 1200
-# Set Height 600
+Ctrl+w Ctrl+w
+Type "G"
+Type "o* Navigate link (Ctrl-]) and go back (Ctrl-T)" Enter Escape Sleep 2s
+Ctrl+w Ctrl+w
+Type "/max" Enter Escape
+Sleep 3
+Type "K"
+Sleep 3
+Ctrl+t
+Sleep 3
+Type "K"
+Sleep 3
+Ctrl+t
+Sleep 3
 
-# Type "echo 'Welcome to VHS!'" Sleep 500ms  Enter
+Type "q"
+Type "G"
+Type "o* Uninstall document tree" Enter Escape Sleep 2s
+Space Type "U"
+Sleep 4s
+Enter
 
-# Sleep 5s
+Type "o* See README for more details!" Enter Escape Sleep 2s
+Type ":qa!"
+Sleep 2s

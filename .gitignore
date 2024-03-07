@@ -2,6 +2,7 @@
 *.swp
 
 .DS_Store
+tags
 
 # Compiled Lua sources
 luac.out

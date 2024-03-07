@@ -6,10 +6,10 @@ vim9script
 export var options = {
     borderchars: ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
     bordercharsp: ['─', '│', '═', '│', '┌', '┐', '╡', '╞'],
-    borderhighlight: hlexists('PopupBorderHighlight') ? ['PopupBorderHighlight'] : [],
-    popuphighlight: get(g:, "popuphighlight", 'Normal'),
-    popupscrollbarhighlight: get(g:, "popupscrollbarhighlight", 'PmenuSbar'),
-    popupthumbhighlight: get(g:, "popupthumbhighlight", 'PmenuThumb'),
+    borderhighlight: ['Normal'],
+    highlight: 'Normal',
+    scrollbarhighlight: 'PmenuSbar',
+    thumbhighlight: 'PmenuThumb',
     promptchar: '>',
     # cursorchar: '█',
 }
@@ -36,9 +36,9 @@ export class FilterMenu
             border: [],
             borderchars: borderchars,
             borderhighlight: options.borderhighlight,
-            highlight: options.popuphighlight,
-            scrollbarhighlight: options.popupscrollbarhighlight,
-            thumbhighlight: options.popupthumbhighlight,
+            highlight: options.highlight,
+            scrollbarhighlight: options.scrollbarhighlight,
+            thumbhighlight: options.thumbhighlight,
             drag: 0,
             wrap: 0,
             cursorline: false,
@@ -73,7 +73,7 @@ export class FilterMenu
 
     def new(title: string, items_dict: list<dict<any>>, Callback: func(any, string), Setup: func(number) = null_function, GetFilteredItems: func(list<any>, string): list<any> = null_function, Cleanup: func() = null_function, maximize: bool = false)
         if empty(prop_type_get('DevdocMenuMatch'))
-            :highlight default DevdocMenuMatch term=bold cterm=bold gui=bold
+            :highlight default link DevdocMenuMatch Special
             prop_type_add('DevdocMenuMatch', {highlight: "DevdocMenuMatch", override: true, priority: 1000, combine: true})
         endif
         if hlget('DevdocMenuCursor')->empty()
@@ -254,7 +254,7 @@ export class NotificationPopup
             padding: [0, 1, 0, 1],
             borderchars: options.borderchars,
             borderhighlight: options.borderhighlight,
-            highlight: options.popuphighlight,
+            highlight: options.highlight,
             drag: 0,
             filter: (id, key) => {
                 if key == "\<esc>"

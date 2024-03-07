@@ -54,13 +54,15 @@ Search and copy using familiar Vim commands. There are no markup artifacts that 
 
 ### TUI
 
-If you are already a Vim user, use the provided shell script `devdocs` to view documents in full window.
+Use the provided shell script `devdocs` to view documents in full window. Vim
+is used as a sort of pager.
 
-If you are _not_ a regular Vim user you can still use Vim as a pager. Clone
-this repository anywhere and use the provided script `devdocs2`.
-It avoids loading the `~/.vimrc` file, but customization is possible through the `~/.devdocs.vim` file.
+The `devdocs2` script is similar except it does not source `~/.vimrc`. Instead,
+customization is done through `~/.devdocs.vim` file. You can treat this as a
+standalone app and configure it independent of normal Vim configuration.
 
-To use custom installation of Vim, set the `$VIMCMD` environment variable to the path of Vim executable.
+To use custom installation of Vim, set the `$VIMCMD` environment variable to
+the path of Vim executable.
 
 ## Requirements
 
@@ -113,23 +115,19 @@ packadd devdocs.vim
 ```
 
 Note: If you are going to use `devdocs2` script only, you can clone this
-repository anywhere. It does not use Vim's plugin system.
+repository anywhere. The script does not use Vim's plugin system.
 
 </details>
 
 ## Configuration
 
-Map keys, set options, and change highlight groups.
+Map keys as shown for quick navigation.
 
-### Keymaps
-
-Map keys as shown (for instance) for quick navigation.
-
-```
+```vim
 if exists('g:loaded_devdocs')
-    nnoremap <leader>h <cmd>DevdocsFind<CR>
-    nnoremap <leader>I <cmd>DevdocsInstall<CR>
-    nnoremap <leader>U <cmd>DevdocsUninstall<CR>
+    nnoremap <your_key> :DevdocsFind<CR>
+    nnoremap <your_key> :DevdocsInstall<CR>
+    nnoremap <your_key> :DevdocsUninstall<CR>
 endif
 ```
 
@@ -137,54 +135,48 @@ endif
 
 There are a couple of options you can set. Here are the defaults:
 
-```
-var opt = {
+```vim
+let g:DevdocsOptions = {
     data_dir: '~/.local/share/devdocs',  # installation directory for document trees
     pandoc: 'pandoc',                    # pandoc executable path
     height: 20,                          # height of split window in number of lines
     open_mode: 'split',                  # 'split' (horizontal), 'vert' (vertical), and 'tab' for tab edit
     slugs: [],                           # list of slugs to search (when empty search 'all', see below)
-    format: {}                           # see below
+    format: {
+        extended_ascii: true,      # create tables using box characters instead of plain ascii
+        divide_section: true,      # sections are marked by a horizontal line if `true`
+        use_terminal_width: true,  # make the document as wide as the terminal, otherwise 80 chars wide
+        indent_section: false,     # sections are progressively indented if `true`, otherwise fixed indentation
+        fence_codeblock: false     # turn off Vim's syntax highlighting of code block (use `DevdocCodeblock` group instead)
+    }
 }
 ```
 
-`format` (above) is a dictionary passed directly to _pandoc_ to control the
-output. Pandoc builds an AST out of html files which is then transformed using
-Lua custom writer. The default values for `format` are as follows:
+Options are set using `g:DevdocsOptionsSet()`.
 
-```
-format: {
-    extended_ascii: true,      # create tables using box characters instead plain ascii (`-`, `|`, `=`)
-    divide_section: true,      # sections are marked by a horizontal line if `true`
-    use_terminal_width: true,  # make the document as wide as the terminal, otherwise 80 chars wide if `false`
-    indent_section: false,     # sections are progressively indented if `true`, otherwise fixed indentation
-    fence_codeblock: false     # turn off Vim's syntax highlighting of code block (use `DevdocCodeblock` group instead)
-}
-```
+For example, use the following configuration to generate documents with a fixed
+80-character width (instead of full terminal width) and to set split window height to
+30 lines.
 
-Options are set using `g:DevdocsOptionsSet(dict)`.
-
-For example, use the following configuration to generate documents with fixed
-80 characters width (instead of full terminal width) and to set window height to 30
-lines.
-
-```
+```vim
 vim9script
-g:DevdocsOptionsSet({format: {use_terminal_width: false}, height: 30})
+call g:DevdocsOptionsSet({format: {use_terminal_width: false}, height: 30})
 ```
 
-If you installed documentation for multiple languages you can set `slugs` list to limit the fuzzy search to specific
-documentation trees. Further, you can use the `filetype` event of `autocmd` to set a
-list of slugs based on the filetype you are working on.
+If you installed documentation for multiple languages, you can set the `slugs`
+list to limit the fuzzy search to specific documentation trees. Furthermore,
+you can use the `filetype` event to set a list of slugs based on the filetype
+you are working on.
 
-```
+```vim
 vim9script
-autocmd filetype python g:DevdocsOptionsSet({slugs: ['python~3.12', 'python~3.11']})
+autocmd FileType python call g:DevdocsOptionsSet({slugs: ['python~3.12', 'python~3.11']})
 ```
 
 ### Syntax Highlighting
 
-Following syntax groups control the look and feel of document. They are linked by default to Vim groups as follows:
+The following syntax groups control the look and feel of the document. They are
+linked by default to Vim groups as follows:
 
 Group|Default
 ------|----
@@ -204,19 +196,19 @@ Group|Default
 
 ### Popup Window
 
-Popup window appearance is controlled by following groups:
+The appearance of the popup window can be configured using `borderchars`,
+`borderhighlight`, `highlight`, `scrollbarhighlight`, `thumbhighlight`, and
+other `:h popup_create-arguments`. To configure these settings, use
+`g:DevdocsPopupOptionsSet()`.
 
-Group|Default
-------|----
-`PopupBorderHighlight`|`None`
-`PopupHighlight`|`Normal`
-`PopupScrollbarHighlight`|`PmenuSbar`
-`PopupThumbHighlight`|`PmenuThumb`
-`DevdocMenuMatch`|`Bold`
+For instance, to set the border of the popup window to the `Comment` highlight
+group:
 
-`DevdocMenuMatch` highlights the characters during search.
+```vim
+g:DevdocsPopupOptionsSet({borderhighlight: ['Comment']})
+```
 
-`borderchars` of the popup window and other `:h popup_create-arguments` can be
-configured using `g:DevdocsPopupOptionsSet(dict)`.
+The `DevdocMenuMatch` highlight group modifies the appearance of characters
+searched so far. By default, it is linked to the `Special` group.
 
-**Open an issue if you encounter errors.**
+**If you encounter errors, please open an issue.**
