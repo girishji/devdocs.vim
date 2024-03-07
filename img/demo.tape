@@ -74,7 +74,7 @@ Set Shell "zsh"
 Type "vi -n" Sleep 2s Enter
 
 Type "iAGENDA" Enter Escape Sleep 1s
-Type "o* Download and install document tree" Enter Escape Sleep 2s
+Type "o* Download and install a document tree" Enter Escape Sleep 2s
 Space Type "I"
 Sleep 4s
 Type "pytho"
@@ -104,7 +104,7 @@ PageDown Sleep 2
 
 Ctrl+w Ctrl+w
 Type "G"
-Type "o* Navigate link (Ctrl-]) and go back (Ctrl-T)" Enter Escape Sleep 2s
+Type "o* Navigate links: Ctrl-] to follow and Ctrl-T to go back" Enter Escape Sleep 2s
 Ctrl+w Ctrl+w
 Type "/max" Enter Escape
 Sleep 3
