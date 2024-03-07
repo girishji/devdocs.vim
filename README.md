@@ -211,4 +211,4 @@ g:DevdocsPopupOptionsSet({borderhighlight: ['Comment']})
 The `DevdocMenuMatch` highlight group modifies the appearance of characters
 searched so far. By default, it is linked to the `Special` group.
 
-**If you encounter errors, please open an issue.**
+If you encounter errors, please open an issue.

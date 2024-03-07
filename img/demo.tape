@@ -109,13 +109,13 @@ Ctrl+w Ctrl+w
 Type "/max" Enter Escape
 Sleep 3
 Type "K"
-Sleep 3
+Sleep 5
 Ctrl+t
-Sleep 3
+Sleep 5
 Type "K"
-Sleep 3
+Sleep 5
 Ctrl+t
-Sleep 3
+Sleep 5
 
 Type "q"
 Type "G"
