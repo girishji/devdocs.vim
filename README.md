@@ -17,7 +17,7 @@
   <a href="#configuration">Configuration</a>
 </p>
 
-![Demo](data/demo.gif)
+![Demo](img/demo.gif)
 
 
 ## Usage
