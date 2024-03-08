@@ -211,4 +211,14 @@ g:DevdocsPopupOptionsSet({borderhighlight: ['Comment']})
 The `DevdocMenuMatch` highlight group modifies the appearance of characters
 searched so far. By default, it is linked to the `Special` group.
 
-If you encounter errors, please open an issue.
+## Other Plugins to Enhance Your Workflow
+
+1. [**devdocs.vim**](https://github.com/girishji/vimcomplete) - enhances autocompletion in Vim.
+
+2. [**easyjump.vim**](https://github.com/girishji/easyjump.vim) - makes code navigation a breeze.
+
+3. [**fFtT.vim**](https://github.com/girishji/fFtT.vim) - accurately target words in a line.
+
+4. [**scope.vim**](https://github.com/girishji/scope.vim) - fuzzy find anything.
+
+5. [**vimcomplete**](https://github.com/girishji/autosuggest.vim) - live autocompletion for Vim's command mode.
