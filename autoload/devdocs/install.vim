@@ -1,7 +1,7 @@
 vim9script
 
 import './task.vim'
-import './popup.vim'
+import autoload './popup.vim'
 
 var data_dir = '~/.local/share/devdocs'
 var devdocs_site_url = 'https://devdocs.io'

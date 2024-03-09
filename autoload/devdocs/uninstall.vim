@@ -1,6 +1,6 @@
 vim9script
 
-import './popup.vim'
+import autoload './popup.vim'
 
 var data_dir = '~/.local/share/devdocs'
 
