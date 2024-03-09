@@ -14,6 +14,10 @@ export var options = {
     # cursorchar: '█',
 }
 
+export def OptionsSet(opts: dict<any>)
+    options->extend(opts)
+enddef
+
 export class FilterMenu
 
     var prompt: string = ''

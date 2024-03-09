@@ -199,13 +199,20 @@ Group|Default
 The appearance of the popup window can be configured using `borderchars`,
 `borderhighlight`, `highlight`, `scrollbarhighlight`, `thumbhighlight`, and
 other `:h popup_create-arguments`. To configure these settings, use
-`g:DevdocsPopupOptionsSet()`.
+`popup.OptionsSet()`.
 
 For instance, to set the border of the popup window to the `Comment` highlight
 group:
 
 ```vim
-g:DevdocsPopupOptionsSet({borderhighlight: ['Comment']})
+import autoload 'devdocs/popup.vim'
+popup.OptionsSet({borderhighlight: ['Comment']})
+```
+
+or, in legacy script:
+
+```
+devdocs#popup#OptionsSet(#{borderhighlight: ['Comment']})
 ```
 
 The `DevdocMenuMatch` highlight group modifies the appearance of characters
