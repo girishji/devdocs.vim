@@ -1,6 +1,6 @@
 vim9script
 
-import autoload './popup.vim'
+import './pop.vim' as popup
 import autoload './options.vim'
 
 if get(g:, 'loaded_devdocs_tui', false)
