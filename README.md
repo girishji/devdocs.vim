@@ -209,7 +209,7 @@ import autoload 'devdocs/popup.vim'
 popup.OptionsSet({borderhighlight: ['Comment']})
 ```
 
-or, in legacy script:
+or,
 
 ```
 devdocs#popup#OptionsSet(#{borderhighlight: ['Comment']})
