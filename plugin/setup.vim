@@ -11,7 +11,7 @@ import autoload '../autoload/devdocs/install.vim'
 import autoload '../autoload/devdocs/uninstall.vim'
 import autoload '../autoload/devdocs/options.vim'
 import autoload '../autoload/devdocs/devdoc.vim'
-import autoload '../autoload/devdocs/popup.vim'
+import autoload '../autoload/devdocs/pop.vim' as popup
 
 def Keymaps()
     if maparg('q', 'n')->empty()
