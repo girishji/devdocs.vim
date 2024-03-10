@@ -58,12 +58,12 @@ local doublequote = options.extended_ascii and { '"', '"'} or {'"', '"'}
 local singlequote = options.extended_ascii and { "'", "'"} or {"'", "'"}
 
 local function set_columns(opts)
-    if opts.columns == pandoc.WriterOptions({}).columns then
-        -- 'columns' is not specified in command line
+    if not options.use_terminal_width then
         opts.columns = TEXT_WIDTH
-        if not options.use_terminal_width then
-            return
-        end
+    elseif opts.columns == pandoc.WriterOptions({}).columns then
+        -- 'columns' is not specified in command line
+        -- windows does not have 'tput'. rely on the caller to supply column
+        --   width through command line.
         local out = pandoc.pipe('tput', {'cols'}, '')
         local num = tonumber(out, 10)
         local right_margin = 2 * TEXT_INDENT
