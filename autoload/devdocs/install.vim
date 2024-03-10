@@ -71,7 +71,7 @@ def FetchSlug(entry: dict<any>)
             aborted = true
             tmpdir->isdirectory() && tmpdir->delete('rf')
         })
-    var url = $'{devdocs_cdn_url}/{entry.slug}/{{index,db}}.json?{entry.mtime}'
+    var url = $'{devdocs_cdn_url}/{entry.slug}/{{index,db}}.json'
     atask = task.AsyncCmd.new(
         $'curl -fsSL --remote-name-all --output-dir {tmpdir} --create-dirs "{url}"',
         (msg: string) => {
@@ -85,6 +85,8 @@ def FetchSlug(entry: dict<any>)
                 else
                     tmpdir->isdirectory() && tmpdir->delete('rf')
                 endif
+            else
+              :echohl ErrorMsg | echoerr $'Could not read json files in {tmpdir} or fetch was aborted' | echohl None
             endif
             notif.Close()
         })
