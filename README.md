@@ -17,7 +17,7 @@
   <a href="#configuration">Configuration</a>
 </p>
 
-<script src="https://gist.github.com/girishji/08a9c6a3f2c93f6588afe0e651315926.js"></script>
+![Demo](img/demo.gif)
 
 ## Usage
 
