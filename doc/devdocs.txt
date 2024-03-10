@@ -1,6 +1,6 @@
 *devdocs.txt*	Browse API documentation from devdocs.io
 
-Author: Girish Palya (girishji AT gmail DOT com)
+Author: Girish (girishji AT gmail DOT com)
 For Vim version 9.1 and above
 
 ==============================================================================
