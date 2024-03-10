@@ -205,8 +205,8 @@ For instance, to set the border of the popup window to the `Comment` highlight
 group:
 
 ```vim
-import autoload 'devdocs/popup.vim'
-popup.OptionsSet({borderhighlight: ['Comment']})
+import autoload 'devdocs/popup.vim' dp
+dp.OptionsSet({borderhighlight: ['Comment']})
 ```
 
 or,
