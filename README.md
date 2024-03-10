@@ -66,7 +66,7 @@ the path of Vim executable.
 ## Requirements
 
 - Vim version 9.1 or higher
-- [pandoc](https://pandoc.org/)
+- [pandoc](https://pandoc.org/) version 3.1 or higher
 
 ## Installation
 
