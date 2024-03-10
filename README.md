@@ -17,7 +17,7 @@
   <a href="#configuration">Configuration</a>
 </p>
 
-![Demo](img/demo.gif)
+![Demo](https://gist.githubusercontent.com/girishji/08a9c6a3f2c93f6588afe0e651315926/raw/10f4675bd5495ce22ebcc23bf6dedf065bd02e80/demo.gif)
 
 ## Usage
 
