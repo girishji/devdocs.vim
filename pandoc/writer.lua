@@ -620,8 +620,8 @@ end
 
 do
     for _, inline in ipairs({'SmallCaps', 'Span', 'Cite'}) do
-        Writer.Inline[inline] = function(el, opts)
-            return Writer.Inlines(el.content, opts)
+        Writer.Inline[inline] = function(el)
+            return Writer.Inlines(el.content)
         end
     end
 end
@@ -686,7 +686,7 @@ Writer.Inline.Math = function(el)
     else
         mark = "$"
     end
-    return concat{ mark, Inlines.Code(el) }
+    return concat{ mark, Writer.Inline.Code(el) }
 end
 
 Writer.Inline.Link = function(el)
