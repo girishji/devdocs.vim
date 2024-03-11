@@ -219,7 +219,7 @@ searched so far. By default, it is linked to the `Special` group.
 
 ## Other Plugins to Enhance Your Workflow
 
-1. [**devdocs.vim**](https://github.com/girishji/vimcomplete) - enhances autocompletion in Vim.
+1. [**vimcomplete**](https://github.com/girishji/vimcomplete) - enhances autocompletion in Vim.
 
 2. [**easyjump.vim**](https://github.com/girishji/easyjump.vim) - makes code navigation a breeze.
 
@@ -227,4 +227,4 @@ searched so far. By default, it is linked to the `Special` group.
 
 4. [**scope.vim**](https://github.com/girishji/scope.vim) - fuzzy find anything.
 
-5. [**vimcomplete**](https://github.com/girishji/autosuggest.vim) - live autocompletion for Vim's command mode.
+5. [**autosuggest.vim**](https://github.com/girishji/autosuggest.vim) - live autocompletion for Vim's command mode.
