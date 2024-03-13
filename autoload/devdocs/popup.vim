@@ -56,6 +56,12 @@ export class FilterMenu
         var items_count = this.items_dict->len()
         var titletxt = $" ({items_count > 0 ? this.filtered_items[0]->len() : 0}/{items_count}) {this.title} "
         this.idp->popup_setoptions({title: titletxt})
+        if this.filtered_items[0]->empty()
+            win_execute(this.id, "setl nonu nocursorline")
+        else
+            win_execute(this.id, "setl nu cursorline")
+            win_execute(this.id, "normal! gg")
+        endif
         this.id->popup_settext(this._Printify(this.filtered_items))
         # this.idp->popup_settext($'{options.promptchar} {this.prompt}{options.cursorchar}')
         this.idp->popup_settext($'{options.promptchar} {this.prompt} ')
