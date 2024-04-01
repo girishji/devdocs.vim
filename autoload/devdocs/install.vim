@@ -40,11 +40,11 @@ def Extract(outdir: string): bool
         :echohl ErrorMsg | echoerr $'Failed to remove {outdir}' | echohl None
         return false
     endif
-	if has('win32') || has('win64')
-		$'ren "{tmpdir}" "{outdir}"'->system()
-	else
-		$'mv "{tmpdir}" "{outdir}"'->system()
-	endif
+    if (has('win32') != 0) || (has('win64') != 0)
+        $'move "{tmpdir}" "{outdir}"'->system()
+    else
+        $'mv "{tmpdir}" "{outdir}"'->system()
+    endif
     if v:shell_error != 0
         :echohl ErrorMsg | echoerr $'Failed to rename {outdir}' | echohl None
         return false
