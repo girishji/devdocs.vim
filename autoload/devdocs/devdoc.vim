@@ -132,14 +132,14 @@ export def LoadPage(fpath: string, slug: string, absolute_path: bool = false)
         :echohl ErrorMsg | echoerr $'Failed to find pandoc' | echohl None
         return
     endif
-    var scriptdir = getscriptinfo({name: 'devdocs'})[0].name->fnamemodify(':h:h')
+    var scriptdir = getscriptinfo({name: 'devdoc.vim'})[0].name->fnamemodify(':h:h:h')
     var opts = GetOptionStr()
     const TEXT_INDENT = 4
     var right_margin = 2 * TEXT_INDENT
     var docwidth = min([300, max([winwidth(0) - right_margin, 50])])
 
     task.AsyncCmd.new(
-        $'{options.opt.pandoc} --columns={docwidth} -t {scriptdir}/pandoc/writer.lua {fullpath}',
+        $'{options.opt.pandoc} --columns={docwidth} -t "{scriptdir}/pandoc/writer.lua" "{fullpath}"',
         (msg: string) => {
             var doc: dict<any>
             try
