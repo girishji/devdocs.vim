@@ -19,9 +19,9 @@
 
 ![Demo](https://gist.githubusercontent.com/girishji/40e35cd669626212a9691140de4bd6e7/raw/6041405e45072a7fbc4e352cbd461e450a7af90e/devdocs-demo.gif)
 
-## Usage
+# Usage
 
-### Install New Documentation
+## Install New Documentation
 
 The `:DevdocsInstall` command opens a popup window for downloading new documentation trees. Please allow a few seconds for the gathering of all slugs (document tree metadata) from [devdocs.io](https://devdocs.io).
 
@@ -29,11 +29,11 @@ Navigate through the choices using `<Tab>` and `<S-Tab>`, or simply type in the 
 
 Installation directory can be changed, as explained below.
 
-### Uninstall Documentation
+## Uninstall Documentation
 
 To remove documentation trees, use the `:DevdocsUninstall` command.
 
-### Fuzzy Search Documentation Trees
+## Fuzzy Search Documentation Trees
 
 Use the `:DevdocsFind` command, or map it to your preferred shortcut, for a
 fuzzy search of API keywords. Use `<Tab>` and `<S-Tab>` for navigation.
@@ -41,17 +41,17 @@ fuzzy search of API keywords. Use `<Tab>` and `<S-Tab>` for navigation.
 The documentation file opens in a new split window, similar to Vim's help
 files. You can configure the height of this window. Type `q` to quit the window.
 
-### Navigate Links
+## Navigate Links
 
 Links are underlined. Place the cursor on a link and type `<C-]>` (Control-]) or `K` to follow the
 link. `<C-t>` to go back. These mappings mirror Vim tags. Link targets are
 echoed on the command line when the cursor is on the link.
 
-### Interact
+## Interact
 
 Search and copy using familiar Vim commands. There are no markup artifacts that require cleanup.
 
-### TUI
+## TUI
 
 Use the provided shell script `devdocs` to view documents in full window. Vim
 is used as a sort of pager.
@@ -63,12 +63,12 @@ standalone app and configure it independent of normal Vim configuration.
 To use custom installation of Vim, set the `$VIMCMD` environment variable to
 the path of Vim executable.
 
-## Requirements
+# Requirements
 
 - Vim version 9.1 or higher
 - [pandoc](https://pandoc.org/) version 3.1 or higher
 
-## Installation
+# Installation
 
 Install [pandoc](https://pandoc.org/installing.html).
 
@@ -118,7 +118,7 @@ repository anywhere. The script does not use Vim's plugin system.
 
 </details>
 
-## Configuration
+# Configuration
 
 Map keys as shown for quick navigation.
 
@@ -130,7 +130,7 @@ if exists('g:loaded_devdocs')
 endif
 ```
 
-### Options
+## Options
 
 There are a couple of options you can set. Here are the defaults:
 
@@ -172,7 +172,7 @@ vim9script
 autocmd FileType python call g:DevdocsOptionsSet({slugs: ['python~3.12', 'python~3.11']})
 ```
 
-### Syntax Highlighting
+## Syntax Highlighting
 
 The following syntax groups control the look and feel of the document. They are
 linked by default to Vim groups as follows:
@@ -193,7 +193,7 @@ Group|Default
 `DevdocH5`|`PreProc`
 `DevdocH6`|`PreProc`
 
-### Popup Window
+## Popup Window
 
 The appearance of the popup window can be configured using `borderchars`,
 `borderhighlight`, `highlight`, `scrollbarhighlight`, `thumbhighlight`, and
@@ -217,7 +217,7 @@ devdocs#popup#OptionsSet(#{borderhighlight: ['Comment']})
 The `DevdocMenuMatch` highlight group modifies the appearance of characters
 searched so far. By default, it is linked to the `Special` group.
 
-## Other Plugins to Enhance Your Workflow
+# Other Plugins to Enhance Your Workflow
 
 1. [**vimcomplete**](https://github.com/girishji/vimcomplete) - enhances autocompletion in Vim.
 
