@@ -224,3 +224,5 @@ searched so far. By default, it is linked to the `Special` group.
 2. [**Scope.vim**](https://github.com/girishji/scope.vim) - fuzzy find anything.
 
 3. [**VimBits**](https://github.com/girishji/vimbits) - curated suite of lightweight Vim plugins.
+
+4. [**Autosuggest.vim**](https://github.com/girishji/autosuggest.vim) - autocompletion for Vim's command mode.
