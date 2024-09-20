@@ -361,6 +361,17 @@ Writer.Pandoc = function(doc, opts)
     return pandoc.json.encode(payload)
 end
 
+-- Blocks
+
+do
+    -- Writer.Block.X
+    for _, block in ipairs({'Para', 'Plain'}) do
+        Writer.Block[block] = function(el, opts)
+            return Writer.Inlines(el.content, opts)
+        end
+    end
+end
+
 Writer.Block.Header = function(el, opts)
     local result = {}
     if el.level < 5 then
@@ -596,14 +607,6 @@ Writer.Block.CodeBlock = function(el)
     return formatted
 end
 
-do
-    for _, block in ipairs({'Para', 'Plain'}) do
-        Writer.Block[block] = function(el, opts)
-            return Writer.Inlines(el.content, opts)
-        end
-    end
-end
-
 Writer.Block.BlockQuote = function(el)
     if nested_blockquote then
         return Writer.Blocks(el.content)
@@ -617,6 +620,18 @@ end
 Writer.Block.HorizontalRule = function(el, opts)
     return cblock("* * * * *", opts.columns)
 end
+
+Writer.Block.Figure = function(el, opts)
+    local result = {}
+    if el.caption and (#el.caption > 0) then
+        result = {"Figure:[", Writer.Inlines(el.caption), "]", cr, nest(Writer.Blocks(el.content), TEXT_INDENT)}
+    else
+        result = {nest(Writer.Blocks(el.content), TEXT_INDENT)}
+    end
+    return concat(result)
+end
+
+-- Inlines
 
 do
     for _, inline in ipairs({'SmallCaps', 'Span', 'Cite'}) do
