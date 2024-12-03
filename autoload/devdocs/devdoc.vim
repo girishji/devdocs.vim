@@ -112,12 +112,14 @@ def LoadLocation(page: dict<any>): bool
         if open_cmd != 'edit'
             silent execute $':{open_cmd}'
         endif
-        execute $':{path2bufnr[fpath]}b'
-        :setl bufhidden=hide
-        :setl nobuflisted
-        :setl noma
-        var curpage = bufnr()->getbufvar('page')
-        :exe $':{LineNr(page.tag, curpage.doc)}'
+        if (path2bufnr[fpath])->bufexists()
+            :execute $':{path2bufnr[fpath]}b'
+            :setl bufhidden=hide
+            :setl nobuflisted
+            :setl noma
+            var curpage = bufnr()->getbufvar('page')
+            :exe $':{LineNr(page.tag, curpage.doc)}'
+        endif
     endif
     return true
 enddef
