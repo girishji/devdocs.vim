@@ -36,14 +36,14 @@ enddef
 def Slugs(): list<any>
     var dir = data_dir->expand()
     if !dir->isdirectory()
-        :echohl WarningMsg | echom $'Devdocs not installed' | echohl None
+        :echohl WarningMsg | echom $'Devdocs slugs not installed' | echohl None
         return []
     endif
     var slugs: list<string>
     if !options.opt->has_key('slugs') || options.opt.slugs->empty()
         slugs = dir->readdir((v) => $'{dir}/{v}'->isdirectory() && v !~ '\.tmp$')
         if slugs->empty()
-            :echohl WarningMsg | echom $'Devdocs not installed' | echohl None
+            :echohl WarningMsg | echom $'Devdocs slugs not installed' | echohl None
             return []
         endif
     else
